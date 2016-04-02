@@ -9,4 +9,4 @@ bayes_people_tracker:
             cartesian_noise_params:                            # The noise for the cartesian observation model
                 x: 0.2
                 y: 0.2
-            matching_algorithm: "NN"	                       # The algorthim to match different detections. NN = Nearest Neighbour, NNJPDA = NN Joint Probability Data Association
+            matching_algorithm: "NN"                           # The algorthim to match different detections. NN = Nearest Neighbour, NNJPDA = NN Joint Probability Data Association
