@@ -37,7 +37,7 @@ PeopleTracker::PeopleTracker() :
 
     private_node_handle.param("images", pub_topic_people_image, std::string("/people_tracker/images"));
     pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic_people_image.c_str(), 10, con_cb, con_cb);
-    
+
     private_node_handle.param("positions", pub_topic, std::string("/people_tracker/positions"));
     pub_detect = n.advertise<bayes_people_tracker_msgs::PeopleTracker>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose", pub_topic_pose, std::string("/people_tracker/pose"));
@@ -177,6 +177,9 @@ void PeopleTracker::publishDetections(
         std::vector<double> angles,
         double min_dist,
         double angle) {
+
+    ROS_DEBUG("Entered publishDetections");
+
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
     result.header.frame_id = target_frame;
@@ -215,6 +218,8 @@ void PeopleTracker::publishDetections(
 
     if (listener->frameExists("map")) {
 
+        ROS_DEBUG("Frame map exists");
+
         geometry_msgs::PointStamped pointInMapCoords;
         geometry_msgs::PointStamped pointInTargetCoords;
         pointInTargetCoords.header.frame_id = "map";
@@ -242,25 +247,31 @@ void PeopleTracker::publishDetections(
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg) {
+    ROS_DEBUG("publishing image detections");
     pub_detect_img.publish(msg);
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTracker msg) {
+    ROS_DEBUG("publishing people tracker");
     pub_detect.publish(msg);
 }
 
 void PeopleTracker::publishDetections(geometry_msgs::PoseStamped msg) {
+    ROS_DEBUG("publishing stamped pose");
     pub_pose.publish(msg);
 }
 
 void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
+    ROS_DEBUG("publishing pose array");
     pub_pose_array.publish(msg);
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
     if (msg.header.frame_id == "map") {
+        ROS_DEBUG("publishing map transform people");
         pub_people_map.publish(msg);
     } else {
+        ROS_DEBUG("publishing people");
         pub_people.publish(msg);
     }
 }
@@ -357,6 +368,7 @@ int main(int argc, char **argv)
 {
     // Set up ROS.
     ros::init(argc, argv, "bayes_people_tracker");
+    ROS_DEBUG("Initializing CLF bayes tracker");
     PeopleTracker* pl = new PeopleTracker();
     return 0;
 }
