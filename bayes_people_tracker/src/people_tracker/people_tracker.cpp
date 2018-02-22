@@ -242,7 +242,6 @@ void PeopleTracker::publishDetections(
         person_img.image = pplImages.at(i);
         people_img.trackedPeopleImg.push_back(person_img);
     }
-    pplImageMutex.unlock();
     publishDetections(people_img);
 }
 
@@ -311,7 +310,6 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
         return;
     }
 
-    pplImageMutex.lock();
     pplImages = pta->images;
     std::vector<geometry_msgs::Point> ppl;
     for(int i = 0; i < pta->poses.poses.size(); i++) {
