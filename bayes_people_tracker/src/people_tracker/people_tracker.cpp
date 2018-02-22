@@ -17,6 +17,7 @@ PeopleTracker::PeopleTracker() :
     // Declare variables that can be modified by launch file or command line.
     std::string pta_topic;
     std::string pub_topic;
+    std::string pub_topic_people_image;
     std::string pub_topic_pose;
     std::string pub_topic_pose_array;
     std::string pub_topic_people;
@@ -34,8 +35,9 @@ PeopleTracker::PeopleTracker() :
     // Create a status callback.
     ros::SubscriberStatusCallback con_cb = boost::bind(&PeopleTracker::connectCallback, this, boost::ref(n));
 
-    private_node_handle.param("images", pub_topic, std::string("/people_tracker/images"));
-    pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic.c_str(), 10, con_cb, con_cb);
+    private_node_handle.param("images", pub_topic_people_image, std::string("/people_tracker/images"));
+    pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic_people_image.c_str(), 10, con_cb, con_cb);
+    
     private_node_handle.param("positions", pub_topic, std::string("/people_tracker/positions"));
     pub_detect = n.advertise<bayes_people_tracker_msgs::PeopleTracker>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose", pub_topic_pose, std::string("/people_tracker/pose"));
