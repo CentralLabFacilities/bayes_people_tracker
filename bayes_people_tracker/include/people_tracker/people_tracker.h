@@ -29,6 +29,7 @@
 #include <string.h>
 #include <vector>
 #include <math.h>
+#include <tuple>
 
 #include "bayes_people_tracker/PeopleTracker.h"
 
@@ -59,12 +60,14 @@ private:
                            std::vector<double> distances,
                            std::vector<double> angles,
                            double min_dist,
-                           double angle);
+                           double angle,
+                           std::vector<sensor_msgs::Image> images);
     void createVisualisation(std::vector<geometry_msgs::Pose> points, ros::Publisher& pub);
     std::vector<double> cartesianToPolar(geometry_msgs::Point point);
     void detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, string detector);
     void connectCallback(ros::NodeHandle &n);
     void parseParams(ros::NodeHandle);
+    sensor_msgs::Image getImageByTag(std::string tag);
 
     std::string generateUUID(std::string time, long id) {
         boost::uuids::name_generator gen(dns_namespace_uuid);

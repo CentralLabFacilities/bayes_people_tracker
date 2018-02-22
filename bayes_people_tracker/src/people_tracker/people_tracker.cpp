@@ -115,35 +115,43 @@ void PeopleTracker::trackingThread() {
     ros::Rate fps(10);
     double time_sec = 0.0;
     while(ros::ok()) {
-        std::map<long, std::vector<geometry_msgs::Pose> > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
+        std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
         if(ppl.size()) {
+
             geometry_msgs::Pose closest_person_point;
+            std::string tag;
             std::vector<geometry_msgs::Pose> pose;
             std::vector<geometry_msgs::Pose> vel;
             std::vector<std::string> uuids;
+            std::vector<sensor_msgs::Image> images;
             std::vector<double> distances;
             std::vector<double> angles;
             double min_dist = 10000.0d;
             double angle;
 
-            for(std::map<long, std::vector<geometry_msgs::Pose> >::const_iterator it = ppl.begin();
+            for(std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > >::const_iterator it = ppl.begin();
                 it != ppl.end(); ++it) {
-                pose.push_back(it->second[0]);
-                vel.push_back(it->second[1]);
+                
+                pose.push_back(std::get<1>(it->second)[0]);
+                vel.push_back(std::get<1>(it->second)[1]);
                 uuids.push_back(generateUUID(startup_time_str, it->first));
+
+                tag = std::get<0>(it->second);
+                ROS_INFO("Pose Tag = %s", tag.c_str());
+                images.push_back(getImageByTag(tag));
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
                 geometry_msgs::PoseStamped poseInTargetCoords;
                 poseInTargetCoords.header.frame_id = target_frame;
                 poseInTargetCoords.header.stamp.fromSec(time_sec);
-                poseInTargetCoords.pose = it->second[0];
+                //poseInTargetCoords.pose = std::get<1>(it->second)[0];
 
                 //Find closest person and get distance and angle
                 if(strcmp(target_frame.c_str(), BASE_LINK)) {
                     try{
                         ROS_DEBUG("Transforming received position into %s coordinate system.", BASE_LINK);
-                        listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
-                        listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
+                        //listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
+                        //listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
                     } catch(tf::TransformException ex) {
                         ROS_WARN("Failed transform: %s", ex.what());
                         continue;
@@ -155,16 +163,24 @@ void PeopleTracker::trackingThread() {
                 distances.push_back(polar[0]);
                 angles.push_back(polar[1]);
                 angle = polar[0] < min_dist ? polar[1] : angle;
-                closest_person_point = polar[0] < min_dist ? it->second[0] : closest_person_point;
+                closest_person_point = polar[0] < min_dist ? std::get<1>(it->second)[0] : closest_person_point;
                 min_dist = polar[0] < min_dist ? polar[0] : min_dist;
             }
 
             if(pub_marker.getNumSubscribers())
                 createVisualisation(pose, pub_marker);
-            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle);
+            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images);
         }
         fps.sleep();
     }
+}
+
+sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
+    sensor_msgs::Image image;
+    //Buffering and getting images NYI
+
+    ROS_WARN("No image for tag %s found!", tag.c_str());
+    return image;
 }
 
 void PeopleTracker::publishDetections(
@@ -176,7 +192,8 @@ void PeopleTracker::publishDetections(
         std::vector<double> distances,
         std::vector<double> angles,
         double min_dist,
-        double angle) {
+        double angle,
+        std::vector<sensor_msgs::Image> images) {
 
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
@@ -226,51 +243,46 @@ void PeopleTracker::publishDetections(
         for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
             pointInTargetCoords.point = it->position;
 
-            listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
-            it->position = pointInMapCoords.point;
+            //listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
+            // it->position = pointInMapCoords.point;
         }
         people.header.frame_id = "map";
         publishDetections(people);
     }
 
-    pplImageMutex.lock();
+    
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
+//    ROS_INFO("\tpplImages size = %d", pplImages.size());
     for(int i = 0; i < ppl.size(); i++) {
+//        ROS_INFO("\t\ti = %d", i);
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
-        person_img.image = pplImages.at(i);
+        person_img.image = images.at(i);
         people_img.trackedPeopleImg.push_back(person_img);
     }
-    pplImageMutex.unlock();
     publishDetections(people_img);
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg) {
-    ROS_INFO("publishing image detections");
     pub_detect_img.publish(msg);
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTracker msg) {
-    ROS_INFO("publishing people tracker");
     pub_detect.publish(msg);
 }
 
 void PeopleTracker::publishDetections(geometry_msgs::PoseStamped msg) {
-    ROS_INFO("publishing stamped pose");
     pub_pose.publish(msg);
 }
 
 void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
-    ROS_INFO("publishing pose array");
     pub_pose_array.publish(msg);
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
     if (msg.header.frame_id == "map") {
-        ROS_INFO("publishing map transform people");
         pub_people_map.publish(msg);
     } else {
-        ROS_INFO("publishing people");
         pub_people.publish(msg);
     }
 }
@@ -349,8 +361,8 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
     pplImageMutex.unlock();
     if(ppl.size()) {
         ekf == NULL ?
-            ukf->addObservation(detector, ppl, pta->header.stamp.toSec()) :
-            ekf->addObservation(detector, ppl, pta->header.stamp.toSec());
+            ukf->addObservation(detector, ppl, pta->header.stamp.toSec(), to_string(pta->header.seq)) :
+            ekf->addObservation(detector, ppl, pta->header.stamp.toSec(), to_string(pta->header.seq));
     }
 }
 
