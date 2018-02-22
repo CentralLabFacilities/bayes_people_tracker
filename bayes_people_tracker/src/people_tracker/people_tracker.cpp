@@ -112,7 +112,7 @@ void PeopleTracker::parseParams(ros::NodeHandle n) {
 
 
 void PeopleTracker::trackingThread() {
-    ros::Rate fps(30);
+    ros::Rate fps(10);
     double time_sec = 0.0;
     while(ros::ok()) {
         std::map<long, std::vector<geometry_msgs::Pose> > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
@@ -178,8 +178,6 @@ void PeopleTracker::publishDetections(
         double min_dist,
         double angle) {
 
-    ROS_INFO("Entered publishDetections");
-
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
     result.header.frame_id = target_frame;
@@ -218,7 +216,7 @@ void PeopleTracker::publishDetections(
 
     if (listener->frameExists("map")) {
 
-        ROS_INFO("Frame map exists");
+        ROS_DEBUG("Frame map exists");
 
         geometry_msgs::PointStamped pointInMapCoords;
         geometry_msgs::PointStamped pointInTargetCoords;
@@ -235,6 +233,7 @@ void PeopleTracker::publishDetections(
         publishDetections(people);
     }
 
+    pplImageMutex.lock();
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for(int i = 0; i < ppl.size(); i++) {
         bayes_people_tracker_msgs::PersonImage person_img;
@@ -242,6 +241,7 @@ void PeopleTracker::publishDetections(
         person_img.image = pplImages.at(i);
         people_img.trackedPeopleImg.push_back(person_img);
     }
+    pplImageMutex.unlock();
     publishDetections(people_img);
 }
 
@@ -298,19 +298,26 @@ std::vector<double> PeopleTracker::cartesianToPolar(geometry_msgs::Point point) 
 
 void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, std::string detector)
 {
-    ROS_INFO("Entered detectorCallback");
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
     if(pta->poses.poses.size() == 0) {
         bayes_people_tracker_msgs::PeopleTracker empty;
+        bayes_people_tracker_msgs::PeopleTrackerImage empty_img;
+
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
         empty.header.seq = ++detect_seq;
+
+        empty_img.header.stamp = ros::Time::now();
+        empty_img.header.frame_id = target_frame;
+        empty_img.header.seq = ++detect_seq;
+
         publishDetections(empty);
+        publishDetections(empty_img);
         return;
     }
 
-    pplImages = pta->images;
+    std::vector<sensor_msgs::Image> pplImagesTemp = pta->images;
     std::vector<geometry_msgs::Point> ppl;
     for(int i = 0; i < pta->poses.poses.size(); i++) {
         geometry_msgs::Pose pt = pta->poses.poses[i];
@@ -337,6 +344,9 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
             ppl.push_back(poseInTargetCoords.pose.position);
 
     }
+    pplImageMutex.lock();
+    pplImages = pplImagesTemp;
+    pplImageMutex.unlock();
     if(ppl.size()) {
         ekf == NULL ?
             ukf->addObservation(detector, ppl, pta->header.stamp.toSec()) :
@@ -367,7 +377,6 @@ int main(int argc, char **argv)
 {
     // Set up ROS.
     ros::init(argc, argv, "bayes_people_tracker");
-    ROS_INFO("Initializing CLF bayes tracker");
     PeopleTracker* pl = new PeopleTracker();
     return 0;
 }
