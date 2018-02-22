@@ -8,6 +8,7 @@
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <clf_perception_vision_msgs/ExtendedPoseArray.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
@@ -61,7 +62,7 @@ private:
                            double angle);
     void createVisualisation(std::vector<geometry_msgs::Pose> points, ros::Publisher& pub);
     std::vector<double> cartesianToPolar(geometry_msgs::Point point);
-    void detectorCallback(const geometry_msgs::PoseArray::ConstPtr &pta, string detector);
+    void detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, string detector);
     void connectCallback(ros::NodeHandle &n);
     void parseParams(ros::NodeHandle);
 
@@ -216,6 +217,7 @@ private:
     ros::Publisher pub_pose;
     ros::Publisher pub_pose_array;
     ros::Publisher pub_people;
+    ros::Publisher pub_people_map;
     ros::Publisher pub_marker;
     tf::TransformListener* listener;
     std::string target_frame;
@@ -223,6 +225,9 @@ private:
     unsigned long marker_seq;
     double startup_time;
     std::string startup_time_str;
+
+    boost::mutex pplImageMutex;
+    std::vector<sensor_msgs::Image> pplImages;
 
     boost::uuids::uuid dns_namespace_uuid;
 

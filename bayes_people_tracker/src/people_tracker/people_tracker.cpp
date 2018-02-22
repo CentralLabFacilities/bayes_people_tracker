@@ -20,6 +20,7 @@ PeopleTracker::PeopleTracker() :
     std::string pub_topic_pose;
     std::string pub_topic_pose_array;
     std::string pub_topic_people;
+    std::string pub_topic_people_map;
     std::string pub_marker_topic;
 
     // Initialize node parameters from launch file or command line.
@@ -41,8 +42,10 @@ PeopleTracker::PeopleTracker() :
     pub_pose = n.advertise<geometry_msgs::PoseStamped>(pub_topic_pose.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose_array", pub_topic_pose_array, std::string("/people_tracker/pose_array"));
     pub_pose_array = n.advertise<geometry_msgs::PoseArray>(pub_topic_pose_array.c_str(), 10, con_cb, con_cb);
-    private_node_handle.param("people", pub_topic_people, std::string("/people_tracker/people"));
+    private_node_handle.param("people", pub_topic_people, std::string("/people_tracker/people")); //TODO: in Map Koordinaten
     pub_people = n.advertise<people_msgs::People>(pub_topic_people.c_str(), 10, con_cb, con_cb);
+    private_node_handle.param("people_map_transform", pub_topic_people_map, std::string("/people_tracker/people/map_transform"));
+    pub_people_map = n.advertise<people_msgs::People>(pub_topic_people_map.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
 
@@ -208,12 +211,31 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
+    if (listener->frameExists("map")) {
+
+        geometry_msgs::PointStamped pointInMapCoords;
+        geometry_msgs::PointStamped pointInTargetCoords;
+        pointInTargetCoords.header.frame_id = "map";
+        pointInTargetCoords.header.stamp.fromSec(time_sec);
+
+        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
+            pointInTargetCoords.point = it->position;
+
+            listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
+            it->position = pointInMapCoords.point;
+        }
+        people.header.frame_id = "map";
+        publishDetections(people);
+    }
+
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for(int i = 0; i < ppl.size(); i++) {
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
-        //person_img.image
+        person_img.image = pplImages.at(i);
+        people_img.trackedPeopleImg.push_back(person_img);
     }
+    pplImageMutex.unlock();
     publishDetections(people_img);
 }
 
@@ -234,7 +256,11 @@ void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
-    pub_people.publish(msg);
+    if (msg.header.frame_id == "map") {
+        pub_people_map.publish(msg);
+    } else {
+        pub_people.publish(msg);
+    }
 }
 
 void PeopleTracker::createVisualisation(std::vector<geometry_msgs::Pose> poses, ros::Publisher& pub) {
@@ -258,11 +284,11 @@ std::vector<double> PeopleTracker::cartesianToPolar(geometry_msgs::Point point) 
     return output;
 }
 
-void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &pta, std::string detector)
+void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, std::string detector)
 {
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
-    if(pta->poses.size() == 0) {
+    if(pta->poses.poses.size() == 0) {
         bayes_people_tracker_msgs::PeopleTracker empty;
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
@@ -271,9 +297,11 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
         return;
     }
 
+    pplImageMutex.lock();
+    pplImages = pta->images;
     std::vector<geometry_msgs::Point> ppl;
-    for(int i = 0; i < pta->poses.size(); i++) {
-        geometry_msgs::Pose pt = pta->poses[i];
+    for(int i = 0; i < pta->poses.poses.size(); i++) {
+        geometry_msgs::Pose pt = pta->poses.poses[i];
 
             //Create stamped pose for tf
             geometry_msgs::PoseStamped poseInCamCoords;
@@ -319,7 +347,7 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
     } else {
         ROS_DEBUG("Pedestrian Localisation: New subscribers. Subscribing.");
         for(it = subscribers.begin(); it != subscribers.end(); ++it)
-            subscribers[it->first] = n.subscribe<geometry_msgs::PoseArray>(it->first.second.c_str(), 10, boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
+            subscribers[it->first] = n.subscribe<clf_perception_vision_msgs::ExtendedPoseArray>(it->first.second.c_str(), 10, boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
     }
 }
 
