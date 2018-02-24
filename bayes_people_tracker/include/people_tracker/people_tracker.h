@@ -8,15 +8,15 @@
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
-#include <clf_perception_vision_msgs/ExtendedPoseArray.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <visualization_msgs/Marker.h>
 #include <std_msgs/ColorRGBA.h>
 #include <people_msgs/People.h>
 #include <people_msgs/Person.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <clf_perception_vision_msgs/ExtendedPoseArray.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>

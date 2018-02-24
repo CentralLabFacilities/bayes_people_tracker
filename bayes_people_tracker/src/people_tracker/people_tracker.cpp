@@ -129,8 +129,7 @@ void PeopleTracker::trackingThread() {
             double min_dist = 10000.0d;
             double angle;
 
-            for(std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > >::const_iterator it = ppl.begin();
-                it != ppl.end(); ++it) {
+            for(std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > >::const_iterator it = ppl.begin(); it != ppl.end(); ++it) {
                 
                 pose.push_back(std::get<1>(it->second)[0]);
                 vel.push_back(std::get<1>(it->second)[1]);
@@ -144,14 +143,14 @@ void PeopleTracker::trackingThread() {
                 geometry_msgs::PoseStamped poseInTargetCoords;
                 poseInTargetCoords.header.frame_id = target_frame;
                 poseInTargetCoords.header.stamp.fromSec(time_sec);
-                //poseInTargetCoords.pose = std::get<1>(it->second)[0];
+                // poseInTargetCoords.pose = std::get<1>(it->second)[0];
 
                 //Find closest person and get distance and angle
                 if(strcmp(target_frame.c_str(), BASE_LINK)) {
                     try{
                         ROS_DEBUG("Transforming received position into %s coordinate system.", BASE_LINK);
-                        //listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
-                        //listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
+                        // listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
+                        // listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
                     } catch(tf::TransformException ex) {
                         ROS_WARN("Failed transform: %s", ex.what());
                         continue;
@@ -178,7 +177,6 @@ void PeopleTracker::trackingThread() {
 sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
     sensor_msgs::Image image;
     //Buffering and getting images NYI
-
     ROS_WARN("No image for tag %s found!", tag.c_str());
     return image;
 }
@@ -242,8 +240,7 @@ void PeopleTracker::publishDetections(
 
         for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
             pointInTargetCoords.point = it->position;
-
-            //listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
+            // listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
             // it->position = pointInMapCoords.point;
         }
         people.header.frame_id = "map";
@@ -252,9 +249,7 @@ void PeopleTracker::publishDetections(
 
     
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
-//    ROS_INFO("\tpplImages size = %d", pplImages.size());
     for(int i = 0; i < ppl.size(); i++) {
-//        ROS_INFO("\t\ti = %d", i);
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
         person_img.image = images.at(i);
@@ -331,6 +326,7 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
 
     std::vector<sensor_msgs::Image> pplImagesTemp = pta->images;
     std::vector<geometry_msgs::Point> ppl;
+
     for(int i = 0; i < pta->poses.poses.size(); i++) {
         geometry_msgs::Pose pt = pta->poses.poses[i];
 

@@ -140,6 +140,7 @@ public:
 
     void addObservation(std::string detector_name, std::vector<geometry_msgs::Point> obsv, double obsv_time, std::string tag) {
         boost::mutex::scoped_lock lock(mutex);
+
         ROS_DEBUG("Adding new observations for detector: %s", detector_name.c_str());
         // add last observation/s to tracker
         detector_model det;
