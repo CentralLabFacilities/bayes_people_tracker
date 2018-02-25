@@ -161,10 +161,12 @@ public:
         mtrk.process(*(det.ctm), det.alg);
 
         std::vector<geometry_msgs::Point>::iterator li, liEnd = obsv.end();
+        int index = 0;
         for (li = obsv.begin(); li != liEnd; li++) {
             (*observation)[0] = li->x;
             (*observation)[1] = li->y;
-            mtrk.addObservation(*observation, obsv_time, tag);
+            mtrk.addObservation(*observation, obsv_time, tag+":"+to_string(index));
+            index++;
         }
     }
 

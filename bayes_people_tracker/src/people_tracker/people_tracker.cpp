@@ -145,12 +145,12 @@ void PeopleTracker::trackingThread() {
                 poseInTargetCoords.header.stamp.fromSec(time_sec);
                 // poseInTargetCoords.pose = std::get<1>(it->second)[0];
 
-                //Find closest person and get distance and angle
+                // Find closest person and get distance and angle
                 if(strcmp(target_frame.c_str(), BASE_LINK)) {
                     try{
                         ROS_DEBUG("Transforming received position into %s coordinate system.", BASE_LINK);
-                        // listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
-                        // listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
+//                        listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
+//                        listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
                     } catch(tf::TransformException ex) {
                         ROS_WARN("Failed transform: %s", ex.what());
                         continue;
@@ -176,7 +176,7 @@ void PeopleTracker::trackingThread() {
 
 sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
     sensor_msgs::Image image;
-    //Buffering and getting images NYI
+    // Buffering and getting images NYI
     ROS_WARN("No image for tag %s found!", tag.c_str());
     return image;
 }
@@ -229,23 +229,23 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
-    if (listener->frameExists("map")) {
-
-        ROS_DEBUG("Frame map exists");
-
-        geometry_msgs::PointStamped pointInMapCoords;
-        geometry_msgs::PointStamped pointInTargetCoords;
-        pointInTargetCoords.header.frame_id = "map";
-        pointInTargetCoords.header.stamp.fromSec(time_sec);
-
-        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
-            pointInTargetCoords.point = it->position;
-            // listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
-            // it->position = pointInMapCoords.point;
-        }
-        people.header.frame_id = "map";
-        publishDetections(people);
-    }
+//    if (listener->frameExists("map")) {
+//
+//        ROS_DEBUG("Frame map exists");
+//
+//        geometry_msgs::PointStamped pointInMapCoords;
+//        geometry_msgs::PointStamped pointInTargetCoords;
+//        pointInTargetCoords.header.frame_id = "map";
+//        pointInTargetCoords.header.stamp.fromSec(time_sec);
+//
+//        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
+//            pointInTargetCoords.point = it->position;
+//            listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
+//            it->position = pointInMapCoords.point;
+//        }
+//        people.header.frame_id = "map";
+//        publishDetections(people);
+//    }
 
     
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
