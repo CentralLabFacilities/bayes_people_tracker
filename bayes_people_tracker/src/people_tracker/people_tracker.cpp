@@ -17,11 +17,9 @@ PeopleTracker::PeopleTracker() :
     // Declare variables that can be modified by launch file or command line.
     std::string pta_topic;
     std::string pub_topic;
-    std::string pub_topic_people_image;
     std::string pub_topic_pose;
     std::string pub_topic_pose_array;
     std::string pub_topic_people;
-    std::string pub_topic_people_map;
     std::string pub_marker_topic;
 
     // Initialize node parameters from launch file or command line.
@@ -35,19 +33,16 @@ PeopleTracker::PeopleTracker() :
     // Create a status callback.
     ros::SubscriberStatusCallback con_cb = boost::bind(&PeopleTracker::connectCallback, this, boost::ref(n));
 
-    private_node_handle.param("images", pub_topic_people_image, std::string("/people_tracker/images"));
-    pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic_people_image.c_str(), 10, con_cb, con_cb);
-
+    private_node_handle.param("images", pub_topic, std::string("/people_tracker/images"));
+    pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("positions", pub_topic, std::string("/people_tracker/positions"));
     pub_detect = n.advertise<bayes_people_tracker_msgs::PeopleTracker>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose", pub_topic_pose, std::string("/people_tracker/pose"));
     pub_pose = n.advertise<geometry_msgs::PoseStamped>(pub_topic_pose.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose_array", pub_topic_pose_array, std::string("/people_tracker/pose_array"));
     pub_pose_array = n.advertise<geometry_msgs::PoseArray>(pub_topic_pose_array.c_str(), 10, con_cb, con_cb);
-    private_node_handle.param("people", pub_topic_people, std::string("/people_tracker/people")); //TODO: in Map Koordinaten
+    private_node_handle.param("people", pub_topic_people, std::string("/people_tracker/people"));
     pub_people = n.advertise<people_msgs::People>(pub_topic_people.c_str(), 10, con_cb, con_cb);
-    private_node_handle.param("people_map_transform", pub_topic_people_map, std::string("/people_tracker/people/map_transform"));
-    pub_people_map = n.advertise<people_msgs::People>(pub_topic_people_map.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
 
@@ -112,45 +107,38 @@ void PeopleTracker::parseParams(ros::NodeHandle n) {
 
 
 void PeopleTracker::trackingThread() {
-    ros::Rate fps(10);
+    ros::Rate fps(30);
     double time_sec = 0.0;
     while(ros::ok()) {
-        std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
+        std::map<long, std::vector<geometry_msgs::Pose> > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
         if(ppl.size()) {
-
             geometry_msgs::Pose closest_person_point;
-            std::string tag;
             std::vector<geometry_msgs::Pose> pose;
             std::vector<geometry_msgs::Pose> vel;
             std::vector<std::string> uuids;
-            std::vector<sensor_msgs::Image> images;
             std::vector<double> distances;
             std::vector<double> angles;
             double min_dist = 10000.0d;
             double angle;
 
-            for(std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > >::const_iterator it = ppl.begin(); it != ppl.end(); ++it) {
-                
-                pose.push_back(std::get<1>(it->second)[0]);
-                vel.push_back(std::get<1>(it->second)[1]);
+            for(std::map<long, std::vector<geometry_msgs::Pose> >::const_iterator it = ppl.begin();
+                it != ppl.end(); ++it) {
+                pose.push_back(it->second[0]);
+                vel.push_back(it->second[1]);
                 uuids.push_back(generateUUID(startup_time_str, it->first));
-
-                tag = std::get<0>(it->second);
-                ROS_INFO("Pose Tag = %s", tag.c_str());
-                images.push_back(getImageByTag(tag));
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
                 geometry_msgs::PoseStamped poseInTargetCoords;
                 poseInTargetCoords.header.frame_id = target_frame;
                 poseInTargetCoords.header.stamp.fromSec(time_sec);
-                // poseInTargetCoords.pose = std::get<1>(it->second)[0];
+                poseInTargetCoords.pose = it->second[0];
 
                 //Find closest person and get distance and angle
                 if(strcmp(target_frame.c_str(), BASE_LINK)) {
                     try{
                         ROS_DEBUG("Transforming received position into %s coordinate system.", BASE_LINK);
-                        // listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
-                        // listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
+                        listener->waitForTransform(poseInTargetCoords.header.frame_id, BASE_LINK, poseInTargetCoords.header.stamp, ros::Duration(3.0));
+                        listener->transformPose(BASE_LINK, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
                     } catch(tf::TransformException ex) {
                         ROS_WARN("Failed transform: %s", ex.what());
                         continue;
@@ -162,23 +150,16 @@ void PeopleTracker::trackingThread() {
                 distances.push_back(polar[0]);
                 angles.push_back(polar[1]);
                 angle = polar[0] < min_dist ? polar[1] : angle;
-                closest_person_point = polar[0] < min_dist ? std::get<1>(it->second)[0] : closest_person_point;
+                closest_person_point = polar[0] < min_dist ? it->second[0] : closest_person_point;
                 min_dist = polar[0] < min_dist ? polar[0] : min_dist;
             }
 
             if(pub_marker.getNumSubscribers())
                 createVisualisation(pose, pub_marker);
-            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images);
+            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle);
         }
         fps.sleep();
     }
-}
-
-sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
-    sensor_msgs::Image image;
-    //Buffering and getting images NYI
-    ROS_WARN("No image for tag %s found!", tag.c_str());
-    return image;
 }
 
 void PeopleTracker::publishDetections(
@@ -190,9 +171,7 @@ void PeopleTracker::publishDetections(
         std::vector<double> distances,
         std::vector<double> angles,
         double min_dist,
-        double angle,
-        std::vector<sensor_msgs::Image> images) {
-
+        double angle) {
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
     result.header.frame_id = target_frame;
@@ -229,31 +208,11 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
-    if (listener->frameExists("map")) {
-
-        ROS_DEBUG("Frame map exists");
-
-        geometry_msgs::PointStamped pointInMapCoords;
-        geometry_msgs::PointStamped pointInTargetCoords;
-        pointInTargetCoords.header.frame_id = "map";
-        pointInTargetCoords.header.stamp.fromSec(time_sec);
-
-        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
-            pointInTargetCoords.point = it->position;
-            // listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
-            // it->position = pointInMapCoords.point;
-        }
-        people.header.frame_id = "map";
-        publishDetections(people);
-    }
-
-    
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for(int i = 0; i < ppl.size(); i++) {
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
-        person_img.image = images.at(i);
-        people_img.trackedPeopleImg.push_back(person_img);
+        //person_img.image
     }
     publishDetections(people_img);
 }
@@ -275,11 +234,7 @@ void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
-    if (msg.header.frame_id == "map") {
-        pub_people_map.publish(msg);
-    } else {
-        pub_people.publish(msg);
-    }
+    pub_people.publish(msg);
 }
 
 void PeopleTracker::createVisualisation(std::vector<geometry_msgs::Pose> poses, ros::Publisher& pub) {
@@ -303,32 +258,22 @@ std::vector<double> PeopleTracker::cartesianToPolar(geometry_msgs::Point point) 
     return output;
 }
 
-void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, std::string detector)
+void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &pta, std::string detector)
 {
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
-    if(pta->poses.poses.size() == 0) {
+    if(pta->poses.size() == 0) {
         bayes_people_tracker_msgs::PeopleTracker empty;
-        bayes_people_tracker_msgs::PeopleTrackerImage empty_img;
-
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
         empty.header.seq = ++detect_seq;
-
-        empty_img.header.stamp = ros::Time::now();
-        empty_img.header.frame_id = target_frame;
-        empty_img.header.seq = ++detect_seq;
-
         publishDetections(empty);
-        publishDetections(empty_img);
         return;
     }
 
-    std::vector<sensor_msgs::Image> pplImagesTemp = pta->images;
     std::vector<geometry_msgs::Point> ppl;
-
-    for(int i = 0; i < pta->poses.poses.size(); i++) {
-        geometry_msgs::Pose pt = pta->poses.poses[i];
+    for(int i = 0; i < pta->poses.size(); i++) {
+        geometry_msgs::Pose pt = pta->poses[i];
 
             //Create stamped pose for tf
             geometry_msgs::PoseStamped poseInCamCoords;
@@ -339,7 +284,7 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
             //Transform
             try {
                 // Transform into given traget frame. Default /map
-                ROS_INFO("Transforming received position into %s coordinate system.", target_frame.c_str());
+                ROS_DEBUG("Transforming received position into %s coordinate system.", target_frame.c_str());
                 listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
                 listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
             }
@@ -352,13 +297,10 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
             ppl.push_back(poseInTargetCoords.pose.position);
 
     }
-    pplImageMutex.lock();
-    pplImages = pplImagesTemp;
-    pplImageMutex.unlock();
     if(ppl.size()) {
         ekf == NULL ?
-            ukf->addObservation(detector, ppl, pta->header.stamp.toSec(), to_string(pta->header.seq)) :
-            ekf->addObservation(detector, ppl, pta->header.stamp.toSec(), to_string(pta->header.seq));
+            ukf->addObservation(detector, ppl, pta->header.stamp.toSec()) :
+            ekf->addObservation(detector, ppl, pta->header.stamp.toSec());
     }
 }
 
@@ -377,7 +319,7 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
     } else {
         ROS_DEBUG("Pedestrian Localisation: New subscribers. Subscribing.");
         for(it = subscribers.begin(); it != subscribers.end(); ++it)
-            subscribers[it->first] = n.subscribe<clf_perception_vision_msgs::ExtendedPoseArray>(it->first.second.c_str(), 10, boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
+            subscribers[it->first] = n.subscribe<geometry_msgs::PoseArray>(it->first.second.c_str(), 10, boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
     }
 }
 

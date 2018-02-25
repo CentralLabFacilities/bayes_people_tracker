@@ -11,12 +11,11 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 #include <std_msgs/ColorRGBA.h>
 #include <people_msgs/People.h>
 #include <people_msgs/Person.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <clf_perception_vision_msgs/ExtendedPoseArray.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -29,7 +28,6 @@
 #include <string.h>
 #include <vector>
 #include <math.h>
-#include <tuple>
 
 #include "bayes_people_tracker/PeopleTracker.h"
 
@@ -60,14 +58,12 @@ private:
                            std::vector<double> distances,
                            std::vector<double> angles,
                            double min_dist,
-                           double angle,
-                           std::vector<sensor_msgs::Image> images);
+                           double angle);
     void createVisualisation(std::vector<geometry_msgs::Pose> points, ros::Publisher& pub);
     std::vector<double> cartesianToPolar(geometry_msgs::Point point);
-    void detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, string detector);
+    void detectorCallback(const geometry_msgs::PoseArray::ConstPtr &pta, string detector);
     void connectCallback(ros::NodeHandle &n);
     void parseParams(ros::NodeHandle);
-    sensor_msgs::Image getImageByTag(std::string tag);
 
     std::string generateUUID(std::string time, long id) {
         boost::uuids::name_generator gen(dns_namespace_uuid);
@@ -220,7 +216,6 @@ private:
     ros::Publisher pub_pose;
     ros::Publisher pub_pose_array;
     ros::Publisher pub_people;
-    ros::Publisher pub_people_map;
     ros::Publisher pub_marker;
     tf::TransformListener* listener;
     std::string target_frame;
@@ -228,9 +223,6 @@ private:
     unsigned long marker_seq;
     double startup_time;
     std::string startup_time_str;
-
-    boost::mutex pplImageMutex;
-    std::vector<sensor_msgs::Image> pplImages;
 
     boost::uuids::uuid dns_namespace_uuid;
 
