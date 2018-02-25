@@ -97,6 +97,7 @@ public:
     }
 
     std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > > track(double* track_time = NULL) {
+
         boost::mutex::scoped_lock lock(mutex);
         std::map<long, std::tuple<std::string, std::vector<geometry_msgs::Pose> > > result;
         dt = getTime() - time;
@@ -115,6 +116,11 @@ public:
         }
 
         for (int i = 0; i < mtrk.size(); i++) {
+
+            // cout << "tracker size " << mtrk.size() << endl;
+            // cout << "current i " << i << endl;
+            // cout << "current tag " << mtrk[i].tag.c_str() << endl;
+
             double theta = atan2(mtrk[i].filter->x[3], mtrk[i].filter->x[1]);
             ROS_DEBUG("trk_%ld: Position: (%f, %f), Orientation: %f, Std Deviation: %f, %f",
                     mtrk[i].id,
@@ -122,6 +128,7 @@ public:
                     theta, //orientation
                     sqrt(mtrk[i].filter->X(0,0)), sqrt(mtrk[i].filter->X(2,2))//std dev
                     );
+
             geometry_msgs::Pose pose, vel;
             pose.position.x = mtrk[i].filter->x[0];
             pose.position.y = mtrk[i].filter->x[2];
@@ -139,11 +146,14 @@ public:
     }
 
     void addObservation(std::string detector_name, std::vector<geometry_msgs::Point> obsv, double obsv_time, std::string tag) {
+
         boost::mutex::scoped_lock lock(mutex);
 
         ROS_DEBUG("Adding new observations for detector: %s", detector_name.c_str());
         // add last observation/s to tracker
+
         detector_model det;
+
         try {
             det = detectors.at(detector_name);
         } catch (std::out_of_range &exc) {
