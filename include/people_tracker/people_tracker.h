@@ -33,8 +33,6 @@
 
 #include "people_tracker/simple_tracking.h"
 #include "people_tracker/asso_exception.h"
-#include "bayes_people_tracker_msgs/PeopleTracker.h"
-#include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
 
 #define BASE_LINK "/base_link"
 
@@ -45,8 +43,7 @@ public:
 
 private:
     void trackingThread();
-    void publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg);
-    void publishDetections(bayes_people_tracker_msgs::PeopleTracker msg);
+    void publishDetections(bayes_people_tracker::PeopleTracker msg);
     void publishDetections(geometry_msgs::PoseStamped msg);
     void publishDetections(geometry_msgs::PoseArray msg);
     void publishDetections(people_msgs::People msg);
@@ -211,7 +208,6 @@ private:
         return ss.str();
     }
 
-    ros::Publisher pub_detect_img;
     ros::Publisher pub_detect;
     ros::Publisher pub_pose;
     ros::Publisher pub_pose_array;

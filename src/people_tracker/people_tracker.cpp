@@ -1,7 +1,4 @@
 #include "people_tracker/people_tracker.h"
-#include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
-#include "bayes_people_tracker_msgs/PersonImage.h"
-#include "bayes_people_tracker_msgs/PeopleTracker.h"
 
 PeopleTracker::PeopleTracker() :
     detect_seq(0),
@@ -33,10 +30,8 @@ PeopleTracker::PeopleTracker() :
     // Create a status callback.
     ros::SubscriberStatusCallback con_cb = boost::bind(&PeopleTracker::connectCallback, this, boost::ref(n));
 
-    private_node_handle.param("images", pub_topic, std::string("/people_tracker/images"));
-    pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("positions", pub_topic, std::string("/people_tracker/positions"));
-    pub_detect = n.advertise<bayes_people_tracker_msgs::PeopleTracker>(pub_topic.c_str(), 10, con_cb, con_cb);
+    pub_detect = n.advertise<bayes_people_tracker::PeopleTracker>(pub_topic.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose", pub_topic_pose, std::string("/people_tracker/pose"));
     pub_pose = n.advertise<geometry_msgs::PoseStamped>(pub_topic_pose.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("pose_array", pub_topic_pose_array, std::string("/people_tracker/pose_array"));
@@ -46,7 +41,6 @@ PeopleTracker::PeopleTracker() :
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
 
-    
     boost::thread tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
 
     ros::spin();
@@ -172,7 +166,7 @@ void PeopleTracker::publishDetections(
         std::vector<double> angles,
         double min_dist,
         double angle) {
-    bayes_people_tracker_msgs::PeopleTracker result;
+    bayes_people_tracker::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
     result.header.frame_id = target_frame;
     result.header.seq = ++detect_seq;
@@ -207,21 +201,9 @@ void PeopleTracker::publishDetections(
         people.people.push_back(person);
     }
     publishDetections(people);
-
-    bayes_people_tracker_msgs::PeopleTrackerImage people_img;
-    for(int i = 0; i < ppl.size(); i++) {
-        bayes_people_tracker_msgs::PersonImage person_img;
-        person_img.uuid = uuids.at(i);
-        //person_img.image
-    }
-    publishDetections(people_img);
 }
 
-void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg) {
-    pub_detect_img.publish(msg);
-}
-
-void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTracker msg) {
+void PeopleTracker::publishDetections(bayes_people_tracker::PeopleTracker msg) {
     pub_detect.publish(msg);
 }
 
@@ -263,7 +245,7 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
     if(pta->poses.size() == 0) {
-        bayes_people_tracker_msgs::PeopleTracker empty;
+        bayes_people_tracker::PeopleTracker empty;
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
         empty.header.seq = ++detect_seq;
