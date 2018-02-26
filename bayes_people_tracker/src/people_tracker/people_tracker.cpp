@@ -269,24 +269,24 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
-//    if (listener->frameExists("map")) {
-//
-//        ROS_DEBUG("Frame map exists");
-//
-//        geometry_msgs::PointStamped pointInMapCoords;
-//        geometry_msgs::PointStamped pointInTargetCoords;
-//        pointInTargetCoords.header.frame_id = "map";
-//        pointInTargetCoords.header.stamp.fromSec(time_sec);
-//
-//        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
-//            pointInTargetCoords.point = it->position;
-//            listener->transformPoint("map", ros::Time(0), pointInTargetCoords, BASE_LINK, pointInMapCoords);
-//            it->position = pointInMapCoords.point;
-//        }
-//        people.header.frame_id = "map";
-//        publishDetections(people);
-//    }
+   if (listener->frameExists("/map")) {
 
+       ROS_DEBUG("Frame map exists");
+
+       geometry_msgs::PointStamped pointInMapCoords;
+       geometry_msgs::PointStamped poseInTargetCoords;
+       poseInTargetCoords.header.frame_id = "/base_link";
+       poseInTargetCoords.header.stamp.fromSec(time_sec);
+
+       for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
+           poseInTargetCoords.point = it->position;
+           listener->waitForTransform("/map", "/base_link", poseInTargetCoords.header.stamp, ros::Duration(3.0));
+           listener->transformPoint("/map", ros::Time(0), poseInTargetCoords, "/base_link", pointInMapCoords);
+           it->position = pointInMapCoords.point;
+       }
+       people.header.frame_id = "/map";
+       publishDetections(people);
+   }
 
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for (int i = 0; i < ppl.size(); i++) {
@@ -315,7 +315,7 @@ void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
-    if (msg.header.frame_id == "map") {
+    if (msg.header.frame_id == "/map") {
         pub_people_map.publish(msg);
     } else {
         pub_people.publish(msg);
