@@ -141,8 +141,8 @@ void PeopleTracker::trackingThread() {
 
                 tag = std::get<0>(it->second);
 
-                ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
-                // images.push_back(getImageByTag(tag));
+                //ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
+                images.push_back(getImageByTag(tag));
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
                 geometry_msgs::PoseStamped poseInTargetCoords;
@@ -184,9 +184,41 @@ void PeopleTracker::trackingThread() {
 
 sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
     sensor_msgs::Image image;
-    // Buffering and getting images NYI
-    ROS_WARN("No image for tag %s found!", tag.c_str());
+    std::string tmpTag = tag;
+    std::vector<std::string> tokens;
+
+    boost::split(tokens,tag,boost::is_any_of(":"));
+    uint32_t seq = atoi(tokens[0].c_str());
+    int index = atoi(tokens[1].c_str());
+    ROS_DEBUG("Looking for tag %d with index %d", seq, index);
+    
+    //check if key exists
+    if(imageBuffer.count(seq) > 0) {
+        image = imageBuffer.find(seq)->second[index];
+    } else {
+        ROS_WARN("No image for tag %s found!", tag.c_str());
+    }
+
     return image;
+}
+
+void PeopleTracker::addImagesToBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index) {
+
+    if (imageBuffer.size() >= max_buffer_size) {
+        uint32_t lowestKey = imageBuffer.begin()->first;
+        for(std::map< uint32_t, std::vector<sensor_msgs::Image>>::const_iterator it = imageBuffer.begin(); it != imageBuffer.end(); ++it) {
+            if(it->first < lowestKey) {
+                lowestKey = it->first;
+            }
+       }
+        ROS_DEBUG("Erased oldest imageset from buffer with id %d", lowestKey);
+        imageBuffer.erase(lowestKey);
+
+    }
+
+    ROS_DEBUG("Adding imageset to buffer with id %d", index);
+    imageBuffer[index] = imageArray;
+
 }
 
 void PeopleTracker::publishDetections(
@@ -260,7 +292,7 @@ void PeopleTracker::publishDetections(
     for (int i = 0; i < ppl.size(); i++) {
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
-        // person_img.image = images.at(i);
+        person_img.image = images.at(i);
         people_img.trackedPeopleImg.push_back(person_img);
     }
     publishDetections(people_img);
@@ -339,6 +371,10 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
     std::vector <sensor_msgs::Image> pplImagesTemp = pta->images;
     std::vector <geometry_msgs::Point> ppl;
 
+    imageBufferMutex.lock();
+    addImagesToBuffer(pplImagesTemp, pta->header.seq);
+    imageBufferMutex.unlock();
+
     for (int i = 0; i < pta->poses.poses.size(); i++) {
 
         geometry_msgs::Pose pt = pta->poses.poses[i];
@@ -367,10 +403,6 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
         ppl.push_back(poseInTargetCoords.pose.position);
 
     }
-
-    pplImageMutex.lock();
-    pplImages = pplImagesTemp;
-    pplImageMutex.unlock();
 
     if (ppl.size()) {
         ekf == NULL ?

@@ -21,12 +21,14 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <bayes_tracking/BayesFilter/bayesFlt.hpp>
 
 #include <XmlRpcValue.h>
 
 #include <string.h>
+#include <sstream>
 #include <vector>
 #include <math.h>
 #include <tuple>
@@ -68,6 +70,7 @@ private:
     void connectCallback(ros::NodeHandle &n);
     void parseParams(ros::NodeHandle);
     sensor_msgs::Image getImageByTag(std::string tag);
+    void addImagesToBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index);
 
     std::string generateUUID(std::string time, long id) {
         boost::uuids::name_generator gen(dns_namespace_uuid);
@@ -229,8 +232,9 @@ private:
     double startup_time;
     std::string startup_time_str;
 
-    boost::mutex pplImageMutex;
-    std::vector<sensor_msgs::Image> pplImages;
+    boost::mutex imageBufferMutex;
+    std::map<uint32_t, std::vector<sensor_msgs::Image>> imageBuffer;
+    static const int max_buffer_size = 30; //3 seconds
 
     boost::uuids::uuid dns_namespace_uuid;
 
