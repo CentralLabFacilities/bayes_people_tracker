@@ -6,6 +6,7 @@
 PeopleTracker::PeopleTracker() :
         detect_seq(0),
         marker_seq(0) {
+    
     ros::NodeHandle n;
 
     listener = new tf::TransformListener();
@@ -53,9 +54,7 @@ PeopleTracker::PeopleTracker() :
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
 
-
-    boost::thread
-    tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
+    boost::thread tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
 
     ros::spin();
 }
@@ -140,8 +139,9 @@ void PeopleTracker::trackingThread() {
                 uuids.push_back(generateUUID(startup_time_str, it->first));
 
                 tag = std::get<0>(it->second);
-
-                //ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
+                
+                // Try to match current observation --> tag (img.seq+array_index) with current image buffer 
+                // ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
                 images.push_back(getImageByTag(tag));
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
@@ -190,13 +190,14 @@ sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
     boost::split(tokens,tag,boost::is_any_of(":"));
     uint32_t seq = atoi(tokens[0].c_str());
     int index = atoi(tokens[1].c_str());
+        
     ROS_DEBUG("Looking for tag %d with index %d", seq, index);
     
     //check if key exists
     if(imageBuffer.count(seq) > 0) {
         image = imageBuffer.find(seq)->second[index];
     } else {
-        ROS_WARN("No image for tag %s found!", tag.c_str());
+        ROS_WARN("No image for tag %s found in buffer!", tag.c_str());
     }
 
     return image;
