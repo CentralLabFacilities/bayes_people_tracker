@@ -115,8 +115,7 @@ void PeopleTracker::trackingThread() {
     ros::Rate fps(10);
     double time_sec = 0.0;
     while (ros::ok()) {
-        std::map < long, std::tuple < std::string,
-                std::vector < geometry_msgs::Pose > > > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
+        std::map < long, std::tuple < std::string, std::vector < geometry_msgs::Pose > > > ppl = ekf == NULL ? ukf->track(&time_sec) : ekf->track(&time_sec);
 
         if (ppl.size() > 0) {
 
@@ -183,6 +182,7 @@ void PeopleTracker::trackingThread() {
 }
 
 sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
+    
     sensor_msgs::Image image;
     std::string tmpTag = tag;
     std::vector<std::string> tokens;
@@ -344,8 +344,7 @@ std::vector<double> PeopleTracker::cartesianToPolar(geometry_msgs::Point point) 
     return output;
 }
 
-void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta,
-                                     std::string detector) {
+void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, std::string detector) {
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
 
@@ -390,10 +389,8 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
         try {
             // Transform into given traget frame. Default /map
             // ROS_INFO("Transforming received position into %s coordinate system.", target_frame.c_str());
-            listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp,
-                                       ros::Duration(3.0));
-            listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id,
-                                    poseInTargetCoords);
+            listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
+            listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
         }
         catch (tf::TransformException ex) {
             ROS_WARN("Failed transform: %s", ex.what());
@@ -420,8 +417,7 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
     bool pose = pub_pose.getNumSubscribers();
     bool pose_array = pub_pose_array.getNumSubscribers();
 
-    std::map < std::pair < std::string, std::string >, ros::Subscriber > ::const_iterator
-    it;
+    std::map < std::pair < std::string, std::string >, ros::Subscriber > ::const_iterator it;
 
     if (!loc && !markers && !people && !pose && !pose_array) {
         ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
