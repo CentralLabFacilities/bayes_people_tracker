@@ -28,7 +28,7 @@ PeopleTracker::PeopleTracker() :
     // Use a private node handle so that multiple instances of the node can be run simultaneously
     // while using different parameters.
     ros::NodeHandle private_node_handle("~");
-    private_node_handle.param("target_frame", target_frame, std::string("/base_link"));
+    private_node_handle.param("target_frame", target_frame, std::string("base_link"));
     private_node_handle.param("people_array", pta_topic, std::string("/upper_body_detector/bounding_box_centres"));
     parseParams(private_node_handle);
 
@@ -270,22 +270,22 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
-   if (listener->frameExists("/map")) {
+   if (listener->frameExists("map")) {
 
        ROS_DEBUG("Frame map exists");
 
        geometry_msgs::PointStamped pointInMapCoords;
        geometry_msgs::PointStamped poseInTargetCoords;
-       poseInTargetCoords.header.frame_id = "/base_link";
+       poseInTargetCoords.header.frame_id = "base_link";
        poseInTargetCoords.header.stamp.fromSec(time_sec);
 
        for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
            poseInTargetCoords.point = it->position;
-           listener->waitForTransform("/map", "/base_link", poseInTargetCoords.header.stamp, ros::Duration(3.0));
-           listener->transformPoint("/map", ros::Time(0), poseInTargetCoords, "/base_link", pointInMapCoords);
+           listener->waitForTransform("map", "base_link", poseInTargetCoords.header.stamp, ros::Duration(3.0));
+           listener->transformPoint("map", ros::Time(0), poseInTargetCoords, "base_link", pointInMapCoords);
            it->position = pointInMapCoords.point;
        }
-       people.header.frame_id = "/map";
+       people.header.frame_id = "map";
        publishDetections(people);
    }
 
@@ -316,7 +316,7 @@ void PeopleTracker::publishDetections(geometry_msgs::PoseArray msg) {
 }
 
 void PeopleTracker::publishDetections(people_msgs::People msg) {
-    if (msg.header.frame_id == "/map") {
+    if (msg.header.frame_id == "map") {
         pub_people_map.publish(msg);
     } else {
         pub_people.publish(msg);
@@ -387,7 +387,7 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
 
         // Transform
         try {
-            // Transform into given traget frame. Default /map
+            // Transform into given traget frame. Default map
             // ROS_INFO("Transforming received position into %s coordinate system.", target_frame.c_str());
             listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
             listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);

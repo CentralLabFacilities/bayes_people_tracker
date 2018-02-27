@@ -40,7 +40,7 @@
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
 #include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
 
-#define BASE_LINK "/base_link"
+#define BASE_LINK "base_link"
 
 class PeopleTracker
 {
