@@ -46,7 +46,7 @@ PeopleTracker::PeopleTracker() :
     private_node_handle.param("pose_array", pub_topic_pose_array, std::string("/people_tracker/pose_array"));
     pub_pose_array = n.advertise<geometry_msgs::PoseArray>(pub_topic_pose_array.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("people", pub_topic_people,
-                              std::string("/people_tracker/people")); //TODO: in Map Koordinaten
+                              std::string("/people_tracker/people"));
     pub_people = n.advertise<people_msgs::People>(pub_topic_people.c_str(), 10, con_cb, con_cb);
     private_node_handle.param("people_map_transform", pub_topic_people_map,
                               std::string("/people_tracker/people/map_transform"));
