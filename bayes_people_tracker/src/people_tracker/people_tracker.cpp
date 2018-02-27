@@ -35,7 +35,7 @@ PeopleTracker::PeopleTracker() :
     // Create a status callback.
     ros::SubscriberStatusCallback con_cb = boost::bind(&PeopleTracker::connectCallback, this, boost::ref(n));
 
-    private_node_handle.param("images", pub_topic_people_image, std::string("/people_tracker/images"));
+    private_node_handle.param("extended", pub_topic_people_image, std::string("/people_tracker/people/extended"));
     pub_detect_img = n.advertise<bayes_people_tracker_msgs::PeopleTrackerImage>(pub_topic_people_image.c_str(), 10,
                                                                                 con_cb, con_cb);
 

@@ -8,6 +8,7 @@
     <arg name="pose_array" default="/people_tracker/pose_array" />
     <arg name="people" default="/people_tracker/people" />
     <arg name="marker" default="/people_tracker/marker_array" />
+    <arg name="extended" default="/people_tracker/people/extended" />
     <arg name="machine" default="localhost" />
     <arg name="user" default="" />
 
@@ -20,6 +21,7 @@
         <param name="pose_array" value="$(arg pose_array)" type="string"/>
         <param name="people" value="$(arg people)" type="string"/>
         <param name="marker" value="$(arg marker)" type="string"/>
+        <param name="extended" value="$(arg extended)" type="string"/>
     </node>
 
 </launch> 
