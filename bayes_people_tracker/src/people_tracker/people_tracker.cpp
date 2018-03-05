@@ -287,6 +287,8 @@ void PeopleTracker::publishDetections(
        }
        people.header.frame_id = "map";
        publishDetections(people);
+   } else {
+       ROS_DEBUG("Frame map was not found. No transformed coordinates will be published!");
    }
 
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
