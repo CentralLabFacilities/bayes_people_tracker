@@ -33,8 +33,6 @@
 #include <math.h>
 #include <tuple>
 
-#include "bayes_people_tracker/PeopleTracker.h"
-
 #include "people_tracker/simple_tracking.h"
 #include "people_tracker/asso_exception.h"
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
