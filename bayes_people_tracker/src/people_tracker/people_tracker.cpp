@@ -125,6 +125,7 @@ void PeopleTracker::trackingThread() {
             std::vector <geometry_msgs::Pose> vel;
             std::vector <std::string> uuids;
             std::vector <sensor_msgs::Image> images;
+            std::vector <sensor_msgs::Image> images_depth;
             std::vector<double> distances;
             std::vector<double> angles;
 
@@ -133,6 +134,8 @@ void PeopleTracker::trackingThread() {
 
             for (std::map < long, std::tuple < std::string, std::vector < geometry_msgs::Pose > > > ::const_iterator it = ppl.begin(); it != ppl.end(); ++it)
             {
+                ROS_INFO("Got percepts!");
+
                 pose.push_back(std::get<1>(it->second)[0]);
                 vel.push_back(std::get<1>(it->second)[1]);
                 uuids.push_back(generateUUID(startup_time_str, it->first));
@@ -141,7 +144,10 @@ void PeopleTracker::trackingThread() {
                 
                 // Try to match current observation --> tag (img.seq+array_index) with current image buffer 
                 // ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
-                images.push_back(getImageByTag(tag));
+                images.push_back(getRGBImageByTag(tag));
+                ROS_INFO("Found image for uuid");
+                images_depth.push_back(getDepthImageByTag(tag));
+                ROS_INFO("Found depth image for uuid");
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
                 geometry_msgs::PoseStamped poseInTargetCoords;
@@ -175,13 +181,13 @@ void PeopleTracker::trackingThread() {
 
             if (pub_marker.getNumSubscribers())
                 createVisualisation(pose, pub_marker);
-            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images);
+            publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images, images_depth);
         }
         fps.sleep();
     }
 }
 
-sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
+sensor_msgs::Image PeopleTracker::getRGBImageByTag(std::string tag) {
     
     sensor_msgs::Image image;
     std::string tmpTag = tag;
@@ -191,34 +197,80 @@ sensor_msgs::Image PeopleTracker::getImageByTag(std::string tag) {
     uint32_t seq = atoi(tokens[0].c_str());
     int index = atoi(tokens[1].c_str());
         
-    ROS_DEBUG("Looking for tag %d with index %d", seq, index);
+    ROS_DEBUG("[RGB] Looking for tag %d with index %d", seq, index);
     
     //check if key exists
-    if(imageBuffer.count(seq) > 0) {
-        image = imageBuffer.find(seq)->second[index];
+    if(imageRGBBuffer.count(seq) > 0) {
+        image = imageRGBBuffer.find(seq)->second[index];
     } else {
-        ROS_WARN("No image for tag %s found in buffer!", tag.c_str());
+        ROS_WARN("No rgb image for tag %s found in buffer!", tag.c_str());
     }
 
     return image;
 }
 
-void PeopleTracker::addImagesToBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index) {
+sensor_msgs::Image PeopleTracker::getDepthImageByTag(std::string tag) {
+    
+    sensor_msgs::Image image;
+    std::string tmpTag = tag;
+    std::vector<std::string> tokens;
 
-    if (imageBuffer.size() >= max_buffer_size) {
-        uint32_t lowestKey = imageBuffer.begin()->first;
-        for(std::map< uint32_t, std::vector<sensor_msgs::Image>>::const_iterator it = imageBuffer.begin(); it != imageBuffer.end(); ++it) {
+    boost::split(tokens,tag,boost::is_any_of(":"));
+    uint32_t seq = atoi(tokens[0].c_str());
+    int index = atoi(tokens[1].c_str());
+        
+    ROS_INFO("[DEPTH] Looking for tag %d with index %d", seq, index);
+    
+    //check if key exists
+    if(imageDepthBuffer.count(seq) > 0) {
+        ROS_INFO("buffer img array size: %d", imageDepthBuffer.find(seq)->second.size());
+        image = imageDepthBuffer.find(seq)->second[index];
+        ROS_INFO("[DEPTH] found image");
+    } else {
+        ROS_INFO("No depth image for tag %s found in buffer!", tag.c_str());
+    }
+
+    return image;
+}
+
+void PeopleTracker::addImagesToRGBBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index) {
+
+    if (imageRGBBuffer.size() >= max_buffer_size) {
+        uint32_t lowestKey = imageRGBBuffer.begin()->first;
+        for(std::map< uint32_t, std::vector<sensor_msgs::Image>>::const_iterator it = imageRGBBuffer.begin(); it != imageRGBBuffer.end(); ++it) {
             if(it->first < lowestKey) {
                 lowestKey = it->first;
             }
        }
-        ROS_DEBUG("Erased oldest imageset from buffer with id %d", lowestKey);
-        imageBuffer.erase(lowestKey);
+        ROS_DEBUG("Erased oldest imageset from rgb buffer with id %d", lowestKey);
+        imageRGBBuffer.erase(lowestKey);
 
     }
 
-    ROS_DEBUG("Adding imageset to buffer with id %d", index);
-    imageBuffer[index] = imageArray;
+    ROS_DEBUG("Adding imageset to rgb buffer with id %d", index);
+    imageRGBBuffer[index] = imageArray;
+
+}
+
+void PeopleTracker::addImagesToDepthBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index) {
+
+    ROS_INFO("Adding depth image to buffer");
+
+    if (imageDepthBuffer.size() >= max_buffer_size) {
+        uint32_t lowestKey = imageDepthBuffer.begin()->first;
+        for(std::map< uint32_t, std::vector<sensor_msgs::Image>>::const_iterator it = imageDepthBuffer.begin(); it != imageDepthBuffer.end(); ++it) {
+            if(it->first < lowestKey) {
+                lowestKey = it->first;
+            }
+       }
+        ROS_DEBUG("Erased oldest imageset from depth buffer with id %d", lowestKey);
+        imageDepthBuffer.erase(lowestKey);
+
+    }
+
+    ROS_INFO("Adding imageset to depth buffer with id %d", index);
+    imageDepthBuffer[index] = imageArray;
+    ROS_INFO("Buffer size: %d", imageDepthBuffer.size());
 
 }
 
@@ -232,7 +284,10 @@ void PeopleTracker::publishDetections(
         std::vector<double> angles,
         double min_dist,
         double angle,
-        std::vector <sensor_msgs::Image> images) {
+        std::vector <sensor_msgs::Image> images,
+        std::vector<sensor_msgs::Image> images_depth) {
+
+    ROS_INFO("Publishing detections");
 
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
@@ -296,6 +351,7 @@ void PeopleTracker::publishDetections(
         bayes_people_tracker_msgs::PersonImage person_img;
         person_img.uuid = uuids.at(i);
         person_img.image = images.at(i);
+        person_img.image_depth = images_depth.at(i);
         people_img.trackedPeopleImg.push_back(person_img);
     }
     publishDetections(people_img);
@@ -370,11 +426,17 @@ void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedP
         return;
     }
 
+    if (detector == "head_detector") {
+        ROS_INFO("Publishing Head detection!");
+    }
+
     std::vector <sensor_msgs::Image> pplImagesTemp = pta->images;
+    std::vector <sensor_msgs::Image> depthImagesTemp = pta->images_depth;
     std::vector <geometry_msgs::Point> ppl;
 
     imageBufferMutex.lock();
-    addImagesToBuffer(pplImagesTemp, pta->header.seq);
+    addImagesToRGBBuffer(pplImagesTemp, pta->header.seq);
+    addImagesToDepthBuffer(depthImagesTemp, pta->header.seq);
     imageBufferMutex.unlock();
 
     for (int i = 0; i < pta->poses.poses.size(); i++) {

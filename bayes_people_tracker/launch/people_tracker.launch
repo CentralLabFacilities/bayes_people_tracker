@@ -1,5 +1,5 @@
 <launch>
-    <arg name="param_file" default="$(find bayes_people_tracker)/config/detectors.yaml" />
+    <arg name="param_file" default="$(find bayes_people_tracker)/config/detectorsHead.yaml" />
     <rosparam command="load" file="$(arg param_file)"/>
 
     <arg name="target_frame" default="/base_link" />
