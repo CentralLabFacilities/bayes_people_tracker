@@ -62,7 +62,8 @@ private:
                            double min_dist,
                            double angle,
                            std::vector<sensor_msgs::Image> images,
-                           std::vector<sensor_msgs::Image> images_depth);
+                           std::vector<sensor_msgs::Image> images_depth,
+                           std::vector<geometry_msgs::Pose> headPoses);
     void createVisualisation(std::vector<geometry_msgs::Pose> points, ros::Publisher& pub);
     std::vector<double> cartesianToPolar(geometry_msgs::Point point);
     void detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, string detector);
@@ -70,8 +71,10 @@ private:
     void parseParams(ros::NodeHandle);
     sensor_msgs::Image getRGBImageByTag(std::string tag);
     sensor_msgs::Image getDepthImageByTag(std::string tag);
+    geometry_msgs::Pose getHeadPoseByTag(std::string tag);
     void addImagesToRGBBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index);
     void addImagesToDepthBuffer(std::vector<sensor_msgs::Image> imageArray, uint32_t index);
+    void addHeadPosesToBuffer(std::vector<geometry_msgs::Pose> headPoseArray, uint32_t index);
 
     std::string generateUUID(std::string time, long id) {
         boost::uuids::name_generator gen(dns_namespace_uuid);
@@ -226,6 +229,9 @@ private:
     ros::Publisher pub_people;
     ros::Publisher pub_people_map;
     ros::Publisher pub_marker;
+    ros::Publisher pub_face_poses;
+    ros::Publisher pub_debug_head_poses;
+
     tf::TransformListener* listener;
     std::string target_frame;
     unsigned long detect_seq;
@@ -236,6 +242,7 @@ private:
     boost::mutex imageBufferMutex;
     std::map<uint32_t, std::vector<sensor_msgs::Image>> imageRGBBuffer;
     std::map<uint32_t, std::vector<sensor_msgs::Image>> imageDepthBuffer;
+    std::map<uint32_t, std::vector<geometry_msgs::Pose>> headPoseBuffer;
     static const int max_buffer_size = 30; //3 seconds
 
     boost::uuids::uuid dns_namespace_uuid;

@@ -22,6 +22,8 @@ add_message_files(
   PeopleTracker.msg
   PersonImage.msg
   PeopleTrackerImage.msg
+  FacePosition.msg
+  #FacePositionArray.msg
 )
 
 generate_messages(
