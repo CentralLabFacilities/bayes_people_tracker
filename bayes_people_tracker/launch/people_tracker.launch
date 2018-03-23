@@ -1,5 +1,5 @@
 <launch>
-    <arg name="param_file" default="$(find bayes_people_tracker)/config/detectorsHead.yaml" />
+    <arg name="param_file" default="$(find bayes_people_tracker)/config/detectors.yaml" />
     <rosparam command="load" file="$(arg param_file)"/>
 
     <arg name="target_frame" default="/base_link" />
@@ -15,6 +15,7 @@
     <machine name="$(arg machine)" address="$(arg machine)" env-loader="$(optenv ROS_ENV_LOADER )" user="$(arg user)" default="true"/>
     
     <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker" output="screen" respawn="true">
+        <param name="param_file" value="$(arg param_file)" type="string"/>
         <param name="target_frame" value="$(arg target_frame)" type="string"/>
         <param name="positions" value="$(arg positions)" type="string"/>
         <param name="pose" value="$(arg pose)" type="string"/>

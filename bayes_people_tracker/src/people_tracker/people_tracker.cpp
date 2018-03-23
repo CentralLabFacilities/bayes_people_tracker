@@ -27,6 +27,8 @@ PeopleTracker::PeopleTracker() :
     std::string pub_marker_topic;
     std::string pub_topic_facePositions;
 
+    tfBroadcaster_ = new tf::TransformBroadcaster();
+
     //DEBUG ONLY!!!
     std::string pub_topic_DBGfacePose = std::string("/people_tracker/face_pose");
 
@@ -162,11 +164,11 @@ void PeopleTracker::trackingThread() {
                 // Try to match current observation --> tag (img.seq+array_index) with current image buffer 
                 // ROS_INFO("ID --> %ld // OBSERVATION TAG --> sequence:index = %s", it->first, tag.c_str());
                 images.push_back(getRGBImageByTag(tag));
-                ROS_INFO("Found image for uuid");
+                ROS_DEBUG("Found image for uuid");
                 images_depth.push_back(getDepthImageByTag(tag));
-                ROS_INFO("Found depth image for uuid");
+                ROS_DEBUG("Found depth image for uuid");
                 headPoses.push_back(getHeadPoseByTag(tag));
-                ROS_INFO("After head pose for uuid");
+                ROS_DEBUG("After head pose for uuid");
 
                 geometry_msgs::PoseStamped poseInRobotCoords;
                 geometry_msgs::PoseStamped poseInTargetCoords;
@@ -238,14 +240,14 @@ geometry_msgs::Pose PeopleTracker::getHeadPoseByTag(std::string tag) {
     uint32_t seq = atoi(tokens[0].c_str());
     int index = atoi(tokens[1].c_str());
         
-    ROS_INFO("[Head pose] Looking for tag %d with index %d", seq, index);
+    ROS_DEBUG("[Head pose] Looking for tag %d with index %d", seq, index);
     
     //check if key exists
     if(headPoseBuffer.count(seq) > 0) {
         head = headPoseBuffer.find(seq)->second[index];
-        ROS_INFO("[Head pose] found image");
+        ROS_DEBUG("[Head pose] found image");
     } else {
-        ROS_INFO("No head pose for tag %s found in buffer!", tag.c_str());
+        ROS_DEBUG("No head pose for tag %s found in buffer!", tag.c_str());
     }
 
     return head;
@@ -261,14 +263,14 @@ sensor_msgs::Image PeopleTracker::getDepthImageByTag(std::string tag) {
     uint32_t seq = atoi(tokens[0].c_str());
     int index = atoi(tokens[1].c_str());
         
-    ROS_INFO("[DEPTH] Looking for tag %d with index %d", seq, index);
+    ROS_DEBUG("[DEPTH] Looking for tag %d with index %d", seq, index);
     
     //check if key exists
     if(imageDepthBuffer.count(seq) > 0) {
         image = imageDepthBuffer.find(seq)->second[index];
-        ROS_INFO("[DEPTH] found image");
+        ROS_DEBUG("[DEPTH] found image");
     } else {
-        ROS_INFO("No depth image for tag %s found in buffer!", tag.c_str());
+        ROS_DEBUG("No depth image for tag %s found in buffer!", tag.c_str());
     }
 
     return image;
@@ -345,7 +347,7 @@ void PeopleTracker::publishDetections(
         std::vector<sensor_msgs::Image> images_depth,
         std::vector<geometry_msgs::Pose> headPoses) {
 
-    ROS_INFO("Publishing detections");
+    ROS_DEBUG("Publishing detections");
 
     bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
@@ -415,20 +417,52 @@ void PeopleTracker::publishDetections(
     publishDetections(people_img);
 
     bayes_people_tracker_msgs::FacePositionArray people_faces;
+    vector<tf::StampedTransform> transforms;
+
     for (int i = 0; i < headPoses.size(); i++) {
-        if (headPoses.at(i).orientation.w == 1) { 
+        if (headPoses.at(i).orientation.w == 1.0) { 
             bayes_people_tracker_msgs::FacePosition person_face;
             person_face.personUUID = uuids.at(i);
-            person_face.position = headPoses.at(i).position;
-            people_faces.facePositions.push_back(person_face);
+            
+            geometry_msgs::PoseStamped poseInCamCoords;
+            geometry_msgs::PoseStamped poseInTargetCoords;
+            poseInCamCoords.header = images_depth.at(i).header;
+            //poseInCamCoords.header.frame_id = std::string("person__"+to_string(i));
+            poseInCamCoords.pose = headPoses.at(i);
 
-            //DEBUG ONLY, REMOVE!!!
-            pub_debug_head_poses.publish(person_face);
+            //DEBUG ONLY, REMOVE LATER ON!!!
+            string id = "head__" + to_string(i);
+            tf::StampedTransform transform;
+            transform.setIdentity();
+            transform.child_frame_id_ = id;
+            transform.frame_id_ = poseInCamCoords.header.frame_id;
+            transform.stamp_ = images_depth.at(i).header.stamp;
+            transform.setOrigin(tf::Vector3(poseInCamCoords.pose.position.x, poseInCamCoords.pose.position.y, poseInCamCoords.pose.position.z));
+            //DEBUG ONLY END!!!
+
+            try {
+                listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
+                listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
+            }
+            catch (tf::TransformException ex) {
+                ROS_WARN("Failed transform: %s", ex.what());
+                return;
+            }
+
+            //DEBUG ONLY
+            transforms.push_back(transform);
+            pub_debug_head_poses.publish(poseInTargetCoords.pose);
+            //DEBUG ONLY END!!!
+
+            person_face.position = poseInTargetCoords.pose.position;
+            people_faces.facePositions.push_back(person_face);
         }
     }
 
     if (people_faces.facePositions.size() > 0) {
         pub_face_poses.publish(people_faces);
+        //DEBUG ONLY!!!
+        tfBroadcaster_->sendTransform(transforms);
     }
 
 }

@@ -38,6 +38,8 @@
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
 #include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
 
+#include <tf/transform_broadcaster.h>
+
 #define BASE_LINK "base_link"
 
 class PeopleTracker
@@ -231,6 +233,8 @@ private:
     ros::Publisher pub_marker;
     ros::Publisher pub_face_poses;
     ros::Publisher pub_debug_head_poses;
+
+    tf::TransformBroadcaster *tfBroadcaster_;
 
     tf::TransformListener* listener;
     std::string target_frame;
