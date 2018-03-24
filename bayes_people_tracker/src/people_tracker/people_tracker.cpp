@@ -31,7 +31,7 @@ PeopleTracker::PeopleTracker() :
     // Use a private node handle so that multiple instances of the node can be run simultaneously
     // while using different parameters.
     ros::NodeHandle private_node_handle("~");
-    private_node_handle.param("target_frame", target_frame, std::string("odom"));
+    private_node_handle.param("target_frame", target_frame, std::string("map"));
     private_node_handle.param("people_array", pta_topic, std::string("/upper_body_detector/bounding_box_centres"));
     parseParams(private_node_handle);
 
@@ -385,7 +385,7 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people);
 
-   if (listener->frameExists("map")) {
+   /*if (listener->frameExists("map")) {
 
        ROS_DEBUG("Frame map exists");
 
@@ -404,7 +404,7 @@ void PeopleTracker::publishDetections(
        publishDetections(people);
    } else {
        ROS_DEBUG("Frame map was not found. No transformed coordinates will be published!");
-   }
+   }*/
 
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for (int i = 0; i < ppl.size(); i++) {
