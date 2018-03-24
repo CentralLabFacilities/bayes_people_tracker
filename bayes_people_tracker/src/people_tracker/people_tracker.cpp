@@ -2,8 +2,6 @@
 #include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
 #include "bayes_people_tracker_msgs/PersonImage.h"
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
-#include "bayes_people_tracker_msgs/FacePosition.h"
-#include "bayes_people_tracker_msgs/FacePositionArray.h"
 
 PeopleTracker::PeopleTracker() :
         detect_seq(0),
@@ -25,12 +23,9 @@ PeopleTracker::PeopleTracker() :
     std::string pub_topic_people;
     std::string pub_topic_people_map;
     std::string pub_marker_topic;
-    std::string pub_topic_facePositions;
 
     tfBroadcaster_ = new tf::TransformBroadcaster();
 
-    //DEBUG ONLY!!!
-    std::string pub_topic_DBGfacePose = std::string("/people_tracker/face_pose");
 
     // Initialize node parameters from launch file or command line.
     // Use a private node handle so that multiple instances of the node can be run simultaneously
@@ -66,12 +61,6 @@ PeopleTracker::PeopleTracker() :
     
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
-
-    private_node_handle.param("facePositions", pub_topic_facePositions, std::string("/people_tracker/faceDBG"));
-    pub_face_poses = n.advertise<bayes_people_tracker_msgs::FacePositionArray>(pub_topic_facePositions.c_str(), 10, con_cb, con_cb);
-
-    //DEBUG ONLY!!!
-    pub_debug_head_poses = n.advertise<geometry_msgs::Pose>(pub_topic_DBGfacePose.c_str(), 10, con_cb, con_cb);
 
     boost::thread tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
 
@@ -416,14 +405,10 @@ void PeopleTracker::publishDetections(
     }
     publishDetections(people_img);
 
-    bayes_people_tracker_msgs::FacePositionArray people_faces;
     vector<tf::StampedTransform> transforms;
 
     for (int i = 0; i < headPoses.size(); i++) {
         if (headPoses.at(i).orientation.w == 1.0) { 
-            bayes_people_tracker_msgs::FacePosition person_face;
-            person_face.personUUID = uuids.at(i);
-            
             geometry_msgs::PoseStamped poseInCamCoords;
             geometry_msgs::PoseStamped poseInTargetCoords;
             poseInCamCoords.header = images_depth.at(i).header;
@@ -451,16 +436,10 @@ void PeopleTracker::publishDetections(
 
             //DEBUG ONLY
             transforms.push_back(transform);
-            pub_debug_head_poses.publish(poseInTargetCoords.pose);
-            //DEBUG ONLY END!!!
-
-            person_face.position = poseInTargetCoords.pose.position;
-            people_faces.facePositions.push_back(person_face);
         }
     }
 
-    if (people_faces.facePositions.size() > 0) {
-        pub_face_poses.publish(people_faces);
+    if (transforms.size() > 0) {
         //DEBUG ONLY!!!
         tfBroadcaster_->sendTransform(transforms);
     }

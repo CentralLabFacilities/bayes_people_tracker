@@ -231,8 +231,6 @@ private:
     ros::Publisher pub_people;
     ros::Publisher pub_people_map;
     ros::Publisher pub_marker;
-    ros::Publisher pub_face_poses;
-    ros::Publisher pub_debug_head_poses;
 
     tf::TransformBroadcaster *tfBroadcaster_;
 
