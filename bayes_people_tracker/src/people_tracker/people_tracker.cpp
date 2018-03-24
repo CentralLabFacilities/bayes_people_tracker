@@ -193,6 +193,16 @@ void PeopleTracker::trackingThread() {
                 createVisualisation(pose, pub_marker);
             publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images, images_depth, headPoses);
         }
+        geometry_msgs::Pose closest_person_point;
+		std::vector <geometry_msgs::Pose> pose;
+		std::vector <geometry_msgs::Pose> vel;
+		std::vector <std::string> uuids;
+		std::vector <sensor_msgs::Image> images;
+		std::vector <sensor_msgs::Image> images_depth;
+		std::vector <geometry_msgs::Pose> headPoses;
+		std::vector<double> distances;
+		std::vector<double> angles;
+        publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, -1, -1, images, images_depth, headPoses);
         fps.sleep();
     }
 }
