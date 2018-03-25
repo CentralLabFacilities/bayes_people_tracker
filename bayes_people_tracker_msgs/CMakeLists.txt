@@ -22,11 +22,13 @@ add_message_files(
   PeopleTracker.msg
   PersonImage.msg
   PeopleTrackerImage.msg
+  PeopleWithFace.msg
 )
 
 generate_messages(
   DEPENDENCIES
   sensor_msgs
+  people_msgs
   std_msgs
   geometry_msgs
 )
