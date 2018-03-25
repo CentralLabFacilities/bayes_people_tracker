@@ -28,7 +28,6 @@ PeopleTracker::PeopleTracker() :
 
     tfBroadcaster_ = new tf::TransformBroadcaster();
 
-
     // Initialize node parameters from launch file or command line.
     // Use a private node handle so that multiple instances of the node can be run simultaneously
     // while using different parameters.
@@ -123,7 +122,6 @@ void PeopleTracker::parseParams(ros::NodeHandle n) {
     }
 }
 
-
 void PeopleTracker::trackingThread() {
     ros::Rate fps(10);
     double time_sec = 0.0;
@@ -148,7 +146,6 @@ void PeopleTracker::trackingThread() {
 
             for (std::map < long, std::tuple < std::string, std::vector < geometry_msgs::Pose > > > ::const_iterator it = ppl.begin(); it != ppl.end(); ++it)
             {
-
                 pose.push_back(std::get<1>(it->second)[0]);
                 vel.push_back(std::get<1>(it->second)[1]);
                 uuids.push_back(generateUUID(startup_time_str, it->first));
@@ -225,7 +222,7 @@ sensor_msgs::Image PeopleTracker::getRGBImageByTag(std::string tag) {
         
     ROS_DEBUG("[RGB] Looking for tag %d with index %d", seq, index);
     
-    //check if key exists
+    // Check if key exists
     if(imageRGBBuffer.count(seq) > 0) {
         image = imageRGBBuffer.find(seq)->second[index];
     } else {
@@ -359,10 +356,10 @@ void PeopleTracker::publishDetections(
             geometry_msgs::PoseStamped poseInCamCoords;
             geometry_msgs::PoseStamped poseInTargetCoords;
             poseInCamCoords.header = images_depth.at(i).header;
-            //poseInCamCoords.header.frame_id = std::string("person__"+to_string(i));
+            // poseInCamCoords.header.frame_id = std::string("person__"+to_string(i));
             poseInCamCoords.pose = headPoses.at(i);
 
-            //DEBUG ONLY, REMOVE LATER ON!!!
+            // DEBUG ONLY, REMOVE LATER ON!!!
             string id = "head__" + to_string(i);
             tf::StampedTransform transform;
             transform.setIdentity();
@@ -370,8 +367,7 @@ void PeopleTracker::publishDetections(
             transform.frame_id_ = poseInCamCoords.header.frame_id;
             transform.stamp_ = images_depth.at(i).header.stamp;
             transform.setOrigin(tf::Vector3(poseInCamCoords.pose.position.x, poseInCamCoords.pose.position.y, poseInCamCoords.pose.position.z));
-            //DEBUG ONLY END!!!
-
+            // DEBUG ONLY END!!!
             try {
                 listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
                 listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
@@ -381,7 +377,7 @@ void PeopleTracker::publishDetections(
                 return;
             }
 
-            //DEBUG ONLY
+            // DEBUG ONLY
             transforms.push_back(transform);
         }
     }
@@ -429,29 +425,7 @@ void PeopleTracker::publishDetections(
         supremePeople.head_positions.push_back(headPoses[i].position);
     }
     publishDetections(people);
-
     publishDetections(supremePeople);
-
-   /*if (listener->frameExists("map")) {
-
-       ROS_DEBUG("Frame map exists");
-
-       geometry_msgs::PointStamped pointInMapCoords;
-       geometry_msgs::PointStamped poseInTargetCoords;
-       poseInTargetCoords.header.frame_id = "odom";
-       poseInTargetCoords.header.stamp.fromSec(time_sec);
-
-       for(std::vector<people_msgs::Person>::iterator it = people.people.begin(); it != people.people.end(); ++it) {
-           poseInTargetCoords.point = it->position;
-           listener->waitForTransform("map", "odom", poseInTargetCoords.header.stamp, ros::Duration(3.0));
-           listener->transformPoint("map", ros::Time(0), poseInTargetCoords, "odom", pointInMapCoords);
-           it->position = pointInMapCoords.point;
-       }
-       people.header.frame_id = "map";
-       publishDetections(people);
-   } else {
-       ROS_DEBUG("Frame map was not found. No transformed coordinates will be published!");
-   }*/
 
     bayes_people_tracker_msgs::PeopleTrackerImage people_img;
     for (int i = 0; i < ppl.size(); i++) {
@@ -464,7 +438,7 @@ void PeopleTracker::publishDetections(
     publishDetections(people_img);
 
     if (transforms.size() > 0) {
-        //DEBUG ONLY!!!
+        // DEBUG ONLY!!!
         tfBroadcaster_->sendTransform(transforms);
     }
 
@@ -522,24 +496,8 @@ std::vector<double> PeopleTracker::cartesianToPolar(geometry_msgs::Point point) 
 void PeopleTracker::detectorCallback(const clf_perception_vision_msgs::ExtendedPoseArray::ConstPtr &pta, std::string detector) {
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
-
     // Do not publish empty messages!
     if (pta->poses.poses.size() == 0) {
-
-        //  bayes_people_tracker_msgs::PeopleTracker empty;
-        //  bayes_people_tracker_msgs::PeopleTrackerImage empty_img;
-        //
-        //  empty.header.stamp = ros::Time::now();
-        //  empty.header.frame_id = target_frame;
-        //  empty.header.seq = ++detect_seq;
-        //
-        //  empty_img.header.stamp = ros::Time::now();
-        //  empty_img.header.frame_id = target_frame;
-        //  empty_img.header.seq = ++detect_seq;
-        //
-        //  publishDetections(empty);
-        //  publishDetections(empty_img);
-
         return;
     }
 
