@@ -2,6 +2,7 @@
 #include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
 #include "bayes_people_tracker_msgs/PersonImage.h"
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
+#include "bayes_people_tracker_msgs/PeopleWithHead.h"
 
 PeopleTracker::PeopleTracker() :
         detect_seq(0),
@@ -23,6 +24,7 @@ PeopleTracker::PeopleTracker() :
     std::string pub_topic_people;
     std::string pub_topic_people_map;
     std::string pub_marker_topic;
+    std::string pub_people_head_topic;
 
     tfBroadcaster_ = new tf::TransformBroadcaster();
 
@@ -61,6 +63,9 @@ PeopleTracker::PeopleTracker() :
     
     private_node_handle.param("marker", pub_marker_topic, std::string("/people_tracker/marker_array"));
     pub_marker = n.advertise<visualization_msgs::MarkerArray>(pub_marker_topic.c_str(), 10, con_cb, con_cb);
+
+    private_node_handle.param("people_with_head", pub_people_head_topic, std::string("/people_tracker/people_with_head"));
+    pub_detect_heads = n.advertise<bayes_people_tracker_msgs::PeopleWithHead>(pub_people_head_topic, 10, con_cb, con_cb);
 
     boost::thread tracking_thread(boost::bind(&PeopleTracker::trackingThread, this));
 
@@ -371,7 +376,9 @@ void PeopleTracker::publishDetections(
     poses.poses = ppl;
     publishDetections(poses);
 
+    bayes_people_tracker_msgs::PeopleWithHead supremePeople;
     people_msgs::People people;
+
     people.header = result.header;
     for (int i = 0; i < ppl.size(); i++) {
         people_msgs::Person person;
@@ -382,8 +389,13 @@ void PeopleTracker::publishDetections(
         person.tagnames.push_back("uuid");
         person.reliability = 1.0;
         people.people.push_back(person);
+
+        supremePeople.people.push_back(person);
+        supremePeople.head_positions.push_back(headPoses[i].position);
     }
     publishDetections(people);
+
+    publishDetections(supremePeople);
 
    /*if (listener->frameExists("map")) {
 
@@ -455,6 +467,10 @@ void PeopleTracker::publishDetections(
         tfBroadcaster_->sendTransform(transforms);
     }
 
+}
+
+void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleWithHead msg){
+    pub_detect_heads.publish(msg);
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg) {

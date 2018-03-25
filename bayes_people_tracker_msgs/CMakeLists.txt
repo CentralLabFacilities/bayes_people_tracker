@@ -22,7 +22,7 @@ add_message_files(
   PeopleTracker.msg
   PersonImage.msg
   PeopleTrackerImage.msg
-  PeopleWithFace.msg
+  PeopleWithHead.msg
 )
 
 generate_messages(

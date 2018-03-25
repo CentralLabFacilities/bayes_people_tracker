@@ -37,6 +37,7 @@
 #include "people_tracker/asso_exception.h"
 #include "bayes_people_tracker_msgs/PeopleTracker.h"
 #include "bayes_people_tracker_msgs/PeopleTrackerImage.h"
+#include "bayes_people_tracker_msgs/PeopleWithHead.h"
 
 #include <tf/transform_broadcaster.h>
 
@@ -49,6 +50,7 @@ public:
 
 private:
     void trackingThread();
+    void publishDetections(bayes_people_tracker_msgs::PeopleWithHead msg);
     void publishDetections(bayes_people_tracker_msgs::PeopleTrackerImage msg);
     void publishDetections(bayes_people_tracker_msgs::PeopleTracker msg);
     void publishDetections(geometry_msgs::PoseStamped msg);
@@ -231,6 +233,7 @@ private:
     ros::Publisher pub_people;
     ros::Publisher pub_people_map;
     ros::Publisher pub_marker;
+    ros::Publisher pub_detect_heads;
 
     tf::TransformBroadcaster *tfBroadcaster_;
 
