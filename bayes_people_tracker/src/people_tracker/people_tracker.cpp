@@ -191,8 +191,7 @@ void PeopleTracker::trackingThread() {
                 min_dist = polar[0] < min_dist ? polar[0] : min_dist;
             }
 
-            if (pub_marker.getNumSubscribers())
-                createVisualisation(pose, pub_marker);
+            createVisualisation(pose, pub_marker);
             publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images, images_depth, headPoses);
         } else {
 			geometry_msgs::Pose closest_person_point;
