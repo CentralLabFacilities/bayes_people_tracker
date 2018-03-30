@@ -191,7 +191,8 @@ void PeopleTracker::trackingThread() {
                 min_dist = polar[0] < min_dist ? polar[0] : min_dist;
             }
 
-            createVisualisation(pose, pub_marker);
+            if (pub_marker.getNumSubscribers())
+                createVisualisation(pose, pub_marker);
             publishDetections(time_sec, closest_person_point, pose, vel, uuids, distances, angles, min_dist, angle, images, images_depth, headPoses);
         } else {
 			geometry_msgs::Pose closest_person_point;
@@ -550,22 +551,22 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
     bool loc = pub_detect.getNumSubscribers();
     bool markers = pub_marker.getNumSubscribers();
     bool people = pub_people.getNumSubscribers();
+    bool head = pub_detect_heads.getNumSubscribers();
     bool pose = pub_pose.getNumSubscribers();
     bool pose_array = pub_pose_array.getNumSubscribers();
 
     std::map < std::pair < std::string, std::string >, ros::Subscriber > ::const_iterator it;
 
-    if (loc || markers || people || pose || pose_array) {
+    if (!loc && !markers && !people && !pose && !pose_array && !head) {
+        ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
+        for (it = subscribers.begin(); it != subscribers.end(); ++it)
+            const_cast<ros::Subscriber &>(it->second).shutdown();
+    } else {
         ROS_DEBUG("Pedestrian Localisation: New subscribers. Subscribing.");
         for (it = subscribers.begin(); it != subscribers.end(); ++it)
             subscribers[it->first] = n.subscribe<clf_perception_vision_msgs::ExtendedPoseArray>(
                     it->first.second.c_str(), 10,
                     boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
-    } else {
-        ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
-        for (it = subscribers.begin(); it != subscribers.end(); ++it)
-            const_cast<ros::Subscriber &>(it->second).shutdown();
-
     }
 }
 
