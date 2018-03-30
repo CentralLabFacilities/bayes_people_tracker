@@ -555,16 +555,17 @@ void PeopleTracker::connectCallback(ros::NodeHandle &n) {
 
     std::map < std::pair < std::string, std::string >, ros::Subscriber > ::const_iterator it;
 
-    if (!loc && !markers && !people && !pose && !pose_array) {
-        ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
-        for (it = subscribers.begin(); it != subscribers.end(); ++it)
-            const_cast<ros::Subscriber &>(it->second).shutdown();
-    } else {
+    if (loc || markers || people || pose || pose_array) {
         ROS_DEBUG("Pedestrian Localisation: New subscribers. Subscribing.");
         for (it = subscribers.begin(); it != subscribers.end(); ++it)
             subscribers[it->first] = n.subscribe<clf_perception_vision_msgs::ExtendedPoseArray>(
                     it->first.second.c_str(), 10,
                     boost::bind(&PeopleTracker::detectorCallback, this, _1, it->first.first));
+    } else {
+        ROS_DEBUG("Pedestrian Localisation: No subscribers. Unsubscribing.");
+        for (it = subscribers.begin(); it != subscribers.end(); ++it)
+            const_cast<ros::Subscriber &>(it->second).shutdown();
+
     }
 }
 
