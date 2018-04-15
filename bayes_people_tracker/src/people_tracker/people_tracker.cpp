@@ -348,8 +348,6 @@ void PeopleTracker::publishDetections(
         std::vector<sensor_msgs::Image> images_depth,
         std::vector<geometry_msgs::Pose> headPoses) {
 
-    vector<tf::StampedTransform> transforms;
-
     for (int i = 0; i < headPoses.size(); i++) {
         if (headPoses.at(i).orientation.w == 1.0) { 
             geometry_msgs::PoseStamped poseInCamCoords;
@@ -358,15 +356,6 @@ void PeopleTracker::publishDetections(
             // poseInCamCoords.header.frame_id = std::string("person__"+to_string(i));
             poseInCamCoords.pose = headPoses.at(i);
 
-            // DEBUG ONLY, REMOVE LATER ON!!!
-            string id = "head__" + to_string(i);
-            tf::StampedTransform transform;
-            transform.setIdentity();
-            transform.child_frame_id_ = id;
-            transform.frame_id_ = poseInCamCoords.header.frame_id;
-            transform.stamp_ = images_depth.at(i).header.stamp;
-            transform.setOrigin(tf::Vector3(poseInCamCoords.pose.position.x, poseInCamCoords.pose.position.y, poseInCamCoords.pose.position.z));
-            // DEBUG ONLY END!!!
             try {
                 listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
                 listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
@@ -375,9 +364,6 @@ void PeopleTracker::publishDetections(
                 ROS_WARN("Failed transform: %s", ex.what());
                 return;
             }
-
-            // DEBUG ONLY
-            transforms.push_back(transform);
         }
     }
 
@@ -435,12 +421,6 @@ void PeopleTracker::publishDetections(
         people_img.trackedPeopleImg.push_back(person_img);
     }
     publishDetections(people_img);
-
-    if (transforms.size() > 0) {
-        // DEBUG ONLY!!!
-        tfBroadcaster_->sendTransform(transforms);
-    }
-
 }
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleWithHead msg){
