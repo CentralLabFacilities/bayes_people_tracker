@@ -50,7 +50,7 @@ include_directories(
 )
 
 add_executable(bayes_people_tracker
-  src/people_tracker/people_tracker.cpp
+  src/bayes_people_tracker/people_tracker.cpp
 )
 
 add_dependencies(bayes_people_tracker ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
@@ -70,6 +70,10 @@ install(TARGETS bayes_people_tracker
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+install(FILES scripts/test_publisher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
@@ -81,5 +85,9 @@ install(DIRECTORY launch
 )
 
 install(DIRECTORY config
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY share
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
