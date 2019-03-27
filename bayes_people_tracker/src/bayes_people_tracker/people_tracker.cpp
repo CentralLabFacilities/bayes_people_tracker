@@ -35,7 +35,7 @@ PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0)
     ros::SubscriberStatusCallback con_cb = boost::bind(&PeopleTracker::connectCallback, this, boost::ref(n));
 
     private_node_handle.param("positions", pub_topic, std::string("/people_tracker/positions"));
-    pub_detect = n.advertise<bayes_people_tracker::PeopleTracker>(pub_topic.c_str(), 100, con_cb, con_cb);
+    pub_detect = n.advertise<bayes_people_tracker_msgs::PeopleTracker>(pub_topic.c_str(), 100, con_cb, con_cb);
     private_node_handle.param("pose", pub_topic_pose, std::string("/people_tracker/pose"));
     pub_pose = n.advertise<geometry_msgs::PoseStamped>(pub_topic_pose.c_str(), 100, con_cb, con_cb);
     private_node_handle.param("pose_array", pub_topic_pose_array, std::string("/people_tracker/pose_array"));
@@ -298,7 +298,7 @@ void PeopleTracker::publishDetections(
         std::vector<double> angles,
         double min_dist,
         double angle) {
-    bayes_people_tracker::PeopleTracker result;
+    bayes_people_tracker_msgs::PeopleTracker result;
     result.header.stamp.fromSec(time_sec);
     result.header.frame_id = target_frame;
     result.header.seq = ++detect_seq;
@@ -345,7 +345,7 @@ void PeopleTracker::publishDetections(
     publishDetections(poses);
 }
 
-void PeopleTracker::publishDetections(bayes_people_tracker::PeopleTracker msg) {
+void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTracker msg) {
     pub_detect.publish(msg);
 }
 
@@ -495,7 +495,7 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
     if(pta->poses.size() == 0) {
-        bayes_people_tracker::PeopleTracker empty;
+        bayes_people_tracker_msgs::PeopleTracker empty;
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
         empty.header.seq = ++detect_seq;
@@ -551,7 +551,7 @@ void PeopleTracker::detectorCallback_people(const people_msgs::People::ConstPtr 
     // Publish an empty message to trigger callbacks even when there are no detections.
     // This can be used by nodes which might also want to know when there is no human detected.
     if(people->people.size() == 0) {
-        bayes_people_tracker::PeopleTracker empty;
+        bayes_people_tracker_msgs::PeopleTracker empty;
         empty.header.stamp = ros::Time::now();
         empty.header.frame_id = target_frame;
         empty.header.seq = ++detect_seq;

@@ -13,30 +13,16 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     tf
     visualization_msgs
+    bayes_people_tracker_msgs
 )
 find_package(Boost REQUIRED COMPONENTS thread)
-
-#######################################
-## Declare ROS messages and services ##
-#######################################
-
-add_message_files(
-  FILES
-  PeopleTracker.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-)
 
 ###################################
 ## catkin specific configuration ##
 ###################################
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS bayes_tracking geometry_msgs roscpp std_msgs tf visualization_msgs
+  CATKIN_DEPENDS bayes_people_tracker_msgs bayes_tracking geometry_msgs roscpp std_msgs tf visualization_msgs
 )
 
 ###########
@@ -53,7 +39,7 @@ add_executable(bayes_people_tracker
   src/bayes_people_tracker/people_tracker.cpp
 )
 
-add_dependencies(bayes_people_tracker ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(bayes_people_tracker ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(bayes_people_tracker
   ${catkin_LIBRARIES}

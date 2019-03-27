@@ -29,7 +29,7 @@
 #include <vector>
 #include <math.h>
 
-#include "bayes_people_tracker/PeopleTracker.h"
+#include "bayes_people_tracker_msgs/PeopleTracker.h"
 #include "bayes_people_tracker/simple_tracking.h"
 #include "bayes_people_tracker/asso_exception.h"
 #include "bayes_people_tracker/people_marker.h"
@@ -43,7 +43,7 @@ public:
 
 private:
     void trackingThread();
-    void publishDetections(bayes_people_tracker::PeopleTracker msg);
+    void publishDetections(bayes_people_tracker_msgs::PeopleTracker msg);
     void publishDetections(geometry_msgs::PoseStamped msg);
     void publishDetections(geometry_msgs::PoseArray msg);
     void publishDetections(people_msgs::People msg);

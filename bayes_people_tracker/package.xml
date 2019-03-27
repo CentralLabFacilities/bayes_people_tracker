@@ -16,6 +16,7 @@
 
   <build_depend>boost</build_depend>
   <build_depend>bayes_tracking</build_depend>
+  <build_depend>bayes_people_tracker_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>people_msgs</build_depend>
@@ -26,6 +27,7 @@
 
   <run_depend>boost</run_depend>
   <run_depend>bayes_tracking</run_depend>
+  <run_depend>bayes_people_tracker_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>people_msgs</run_depend>
