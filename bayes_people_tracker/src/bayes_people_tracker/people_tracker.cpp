@@ -347,6 +347,7 @@ void PeopleTracker::publishDetections(
 
 void PeopleTracker::publishDetections(bayes_people_tracker_msgs::PeopleTracker msg) {
     pub_detect.publish(msg);
+    pub_people.publish(people_msgs::People());
 }
 
 void PeopleTracker::publishDetections(geometry_msgs::PoseStamped msg) {
