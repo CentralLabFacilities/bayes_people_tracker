@@ -13,30 +13,16 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     tf
     visualization_msgs
+    bayes_people_tracker_msgs
 )
 find_package(Boost REQUIRED COMPONENTS thread)
-
-#######################################
-## Declare ROS messages and services ##
-#######################################
-
-add_message_files(
-  FILES
-  PeopleTracker.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-)
 
 ###################################
 ## catkin specific configuration ##
 ###################################
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS bayes_tracking geometry_msgs roscpp std_msgs tf visualization_msgs
+  CATKIN_DEPENDS bayes_people_tracker_msgs bayes_tracking geometry_msgs roscpp std_msgs tf visualization_msgs
 )
 
 ###########
@@ -50,10 +36,10 @@ include_directories(
 )
 
 add_executable(bayes_people_tracker
-  src/people_tracker/people_tracker.cpp
+  src/bayes_people_tracker/people_tracker.cpp
 )
 
-add_dependencies(bayes_people_tracker ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(bayes_people_tracker ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(bayes_people_tracker
   ${catkin_LIBRARIES}
@@ -70,6 +56,10 @@ install(TARGETS bayes_people_tracker
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+install(FILES scripts/test_publisher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
@@ -81,5 +71,9 @@ install(DIRECTORY launch
 )
 
 install(DIRECTORY config
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY share
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
