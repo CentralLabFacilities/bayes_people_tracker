@@ -2,8 +2,8 @@
     <arg name="param_file" default="$(find bayes_people_tracker)/config/detectors.yaml" />
     <rosparam command="load" file="$(arg param_file)"/>
 
-    <arg name="target_frame" default="/base_link" />
-    <arg name="base_frame" default="/base_link" />
+    <arg name="target_frame" default="map" />
+    <arg name="base_frame" default="base_link" />
 
     <arg name="positions" default="/people_tracker/positions" />
     <arg name="pose" default="/people_tracker/pose" />
