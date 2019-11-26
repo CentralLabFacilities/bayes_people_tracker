@@ -51,6 +51,7 @@ private:
                            geometry_msgs::Pose closest,
                            std::vector<geometry_msgs::Pose> ppl,
                            std::vector<geometry_msgs::Pose> vels,
+                           std::vector<geometry_msgs::Pose> vars,
                            std::vector<std::string> uuids,
                            std::vector<double> distances,
                            std::vector<double> angles,

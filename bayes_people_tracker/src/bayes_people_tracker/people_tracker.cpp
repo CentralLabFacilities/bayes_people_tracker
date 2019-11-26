@@ -267,7 +267,7 @@ void PeopleTracker::trackingThread() {
                 }
 
                 if(pub_detect.getNumSubscribers() || pub_pose.getNumSubscribers() || pub_pose_array.getNumSubscribers() || pub_people.getNumSubscribers())
-        	        publishDetections(time_sec, closest_person_point, poses, vels, uuids, distances, angles, min_dist, angle);
+        	        publishDetections(time_sec, closest_person_point, poses, vels, vars, uuids, distances, angles, min_dist, angle);
 
                 if(pub_marker.getNumSubscribers())
                     createVisualisation(poses, vars, pids, pub_marker, uuids);
@@ -293,6 +293,7 @@ void PeopleTracker::publishDetections(
         geometry_msgs::Pose closest,
         std::vector<geometry_msgs::Pose> ppl,
         std::vector<geometry_msgs::Pose> vels,
+        std::vector<geometry_msgs::Pose> vars,
         std::vector<std::string> uuids,
         std::vector<double> distances,
         std::vector<double> angles,
@@ -326,7 +327,7 @@ void PeopleTracker::publishDetections(
         person.name = uuids[i];
         person.tags.push_back(uuids[i]);
         person.tagnames.push_back("uuid");
-        person.reliability = 1.0;
+        person.reliability = 1 - sqrt(vars[i].position.x + vars[i].position.y);
         people.people.push_back(person);
     }
 
