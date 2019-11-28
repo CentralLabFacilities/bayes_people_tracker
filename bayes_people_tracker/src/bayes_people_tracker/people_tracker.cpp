@@ -442,6 +442,10 @@ void PeopleTracker::createVisualisation(std::vector<geometry_msgs::Pose> poses, 
         vars_ellipse.pose.position.x = poses[i].position.x;
         vars_ellipse.pose.position.y = poses[i].position.y;
         vars_ellipse.pose.position.z = 0.0;
+        vars_ellipse.pose.orientation.x = 0.0; // Identity quaternion
+        vars_ellipse.pose.orientation.y = 0.0;
+        vars_ellipse.pose.orientation.z = 0.0;
+        vars_ellipse.pose.orientation.w = 1.0;
         vars_ellipse.scale.z = 0.2;
         vars_ellipse.scale.x = sqrt(vars[i].position.x);
         vars_ellipse.scale.y = sqrt(vars[i].position.y);
@@ -470,13 +474,19 @@ void PeopleTracker::createVisualisation(std::vector<geometry_msgs::Pose> poses, 
             	tracking_tr.points.push_back(p);
             }
         }
+        tracking_tr.pose.orientation.x = 0.0; // Identity quaternion
+        tracking_tr.pose.orientation.y = 0.0;
+        tracking_tr.pose.orientation.z = 0.0;
+        tracking_tr.pose.orientation.w = 1.0;
         tracking_tr.scale.x = 0.1;
         tracking_tr.color.a = 1.0;
         tracking_tr.color.r = std::max(0.3,(double)(pids[i]%3)/3.0);
         tracking_tr.color.g = std::max(0.3,(double)(pids[i]%6)/6.0);
         tracking_tr.color.b = std::max(0.3,(double)(pids[i]%9)/9.0);
         tracking_tr.lifetime = ros::Duration(1.0);
-        marker_array.markers.push_back(tracking_tr);
+        if(tracking_tr.points.size() >= 2) { // The LINE_STRIP only makes sense if there are at least two points
+            marker_array.markers.push_back(tracking_tr);
+        }
     }
     pub.publish(marker_array);
 }
