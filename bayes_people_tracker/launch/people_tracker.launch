@@ -10,11 +10,7 @@
     <arg name="pose_array" default="/people_tracker/pose_array" />
     <arg name="people" default="/people_tracker/people" />
     <arg name="marker" default="/people_tracker/marker_array" />
-    <arg name="machine" default="localhost" />
-    <arg name="user" default="" />
 
-    <machine name="$(arg machine)" address="$(arg machine)" env-loader="$(optenv ROS_ENV_LOADER )" user="$(arg user)" default="true"/>
-    
     <node pkg="bayes_people_tracker" type="bayes_people_tracker" name="bayes_people_tracker" output="screen" respawn="true">
         <param name="target_frame" value="$(arg target_frame)" type="string"/>
         <param name="base_frame" value="$(arg base_frame)" type="string"/>
@@ -24,5 +20,10 @@
         <param name="people" value="$(arg people)" type="string"/>
         <param name="marker" value="$(arg marker)" type="string"/>
     </node>
+
+    <!-- Convert Any Message to PoseArray -->
+    <include file="$(find detector_msg_to_pose_array)/launch/to_pose_array.launch">
+    </include>
+
 
 </launch> 
