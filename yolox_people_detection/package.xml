@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">>
+  <name>yolox_people_detection</name>
+  <version>0.0.0</version>
+  <description>People detection with yolox</description>
+
+  <maintainer email="lruegeme@techfak.uni-bielefeld.de">Leroy Rügemer</maintainer>
+
+  <license>Apache 2.0</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+  <depend>clf_object_recognition_yolox</depend>
+
+</package>

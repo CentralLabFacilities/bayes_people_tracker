@@ -1,0 +1,25 @@
+<launch>
+    <arg name="config" default="$(find clf_object_recognition_yolox)/config/config.yaml"/>
+    <arg name="checkpoint" default="$(find clf_object_recognition_yolox)/../yolox-models/yolox_l.pth" />
+    <arg name="exp" default="$(find clf_object_recognition_yolox)/config/exp/yolox_l.py"/>
+    
+    <arg name="camera_info_topic" default="/xtion/depth_registered/camera_info"/>
+    <arg name="image_topic" default="/xtion/rgb/image_raw"/>
+    <arg name="depth_topic" default="/xtion/depth_registered/image_raw"/>
+
+    <arg name="classid" default="0"/>
+    <arg name="depth_scaling" default="1"/>
+
+    <node pkg="yolox_people_detection" type="yolox_person_detection_node" name="yolox_people_tracker" output="screen">
+        <remap from="~input" to="$(arg image_topic)" />
+        <param name="checkpoint" value="$(arg checkpoint)"/>
+        <param name="exp" value="$(arg exp)"/>
+        <rosparam command="load" file="$(arg config)" />
+        <param name="camera_info" value="$(arg camera_info_topic)"/>
+        <param name="img" value="$(arg image_topic)"/>
+        <param name="depth" value="$(arg depth_topic)"/>
+        <param name="classid" value="$(arg classid)"/>
+        <param name="depth_scaling" value="$(arg depth_scaling)"/>
+    </node>
+
+</launch> 
