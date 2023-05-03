@@ -25,24 +25,14 @@ import std_msgs.msg
 from geometry_msgs.msg import PoseArray, Pose
 from image_geometry import cameramodels
 
-class YOLOXNode():
-	def __init__(self, checkpoint, exp_path, config, camera_info_path='/xtion/depth_registered/camera_info' , image_path= '/xtion/rgb/image_raw', depth_path='/xtion/depth_registered/image_raw', timeout = 10):
-		rospy.loginfo(logger_name="YOLOXNode", msg="initializing:")
-		rospy.loginfo(logger_name="YOLOXNode", msg=f" - checkpoint={checkpoint}")
-		rospy.loginfo(logger_name="YOLOXNode", msg=f" - exp_path={exp_path}")
-		rospy.loginfo(logger_name="YOLOXNode", msg=f" - timeout={timeout}")
-		self.result_pub = rospy.Publisher('~mean_point', std_msgs.msg.String, queue_size=1)
+class YoloxPeopleNode():
+	def __init__(self, checkpoint, exp_path, config, camera_info_path='/xtion/depth_registered/camera_info' , image_path= '/xtion/rgb/image_raw', depth_path='/xtion/depth_registered/image_raw', classid = 0, depth_scaling = 1):
+		rospy.loginfo(logger_name="YoloxPeopleNode", msg="initializing:")
+		rospy.loginfo(logger_name="YoloxPeopleNode", msg=f" - checkpoint={checkpoint}")
+		rospy.loginfo(logger_name="YoloxPeopleNode", msg=f" - exp_path={exp_path}")
 		self.pub = rospy.Publisher('~poses', PoseArray, queue_size=1)
-
-		if rospy.has_param('/object_labels'):
-			labels = rospy.get_param('/object_labels')
-			self.classes = ()
-			for id in labels:
-				self.classes = self.classes + (labels[id],)
-		else:
-			from yolox.data.datasets import COCO_CLASSES
-			self.classes = COCO_CLASSES
-			rospy.logwarn(logger_name="YOLOXNode", msg="no /object_labels param found")
+		self.classid = classid
+		self.depth_scaling = depth_scaling
 
 		self.exp = get_exp(exp_path,"")
 		if "conf" in config:
@@ -54,19 +44,10 @@ class YOLOXNode():
 		image_sub = message_filters.Subscriber(image_path, Image)
 		info_sub = message_filters.Subscriber(camera_info_path, CameraInfo)
 		depth_sub = message_filters.Subscriber(depth_path, Image)
-		#self.ts = message_filters.TimeSynchronizer([image_sub, info_sub, depth_sub], 10)
 		self.ts = message_filters.ApproximateTimeSynchronizer([image_sub, info_sub, depth_sub], 1, 1) 
-		mean_point=self.ts.registerCallback(self.callback)
-		self.result_pub.publish(str(mean_point))
+		self.ts.registerCallback(self.callback)
 
-		
-
-	def _reconfigure(self, config, level):
-		rospy.loginfo(logger_name="YOLOXNode", msg="Reconfigured")
-		self.config = config
-		return config
-
-
+		self.camera = cameramodels.PinholeCameraModel()
 
 	def callback(self, image, camera_info, depth_raw):
 
@@ -76,60 +57,53 @@ class YOLOXNode():
 			depth = self._bridge.imgmsg_to_cv2(depth_raw, "passthrough")
 		except CvBridgeError as e:
 			error_msg = "Could not convert to opencv image: %s" % e
-			rospy.logerr(logger_name="YOLOXNode", msg=error_msg)
+			rospy.logerr(logger_name="YoloxPeopleNode", msg=error_msg)
 			raise Exception(error_msg)
 		(cls, scores, bboxes) = self.recognizer.inference(img)
 		
-		camera.fromCameraInfo(camera_info)
-		depth_scaling = 1
-		constant_y = depth_scaling/ camera.fy()
-		constant_x = depth_scaling / camera.fx()
-		#camera.fromCameraInfo(camera_info)
+		self.camera.fromCameraInfo(camera_info)
+		constant_y = self.depth_scaling / self.camera.fy()
+		constant_x = self.depth_scaling / self.camera.fx()
+		
 		msg = PoseArray()
 		msg.header = image.header
 		for c, score, box in zip(cls, scores, bboxes):
-			if(c == 0):
+			if(c == self.classid):
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
 				mean_point_depth= (depth[int(yc)][int(xc)])
 				if (np.isnan(mean_point_depth)):
 					mean_point_depth= 0
-				print("human:", int(yc),int(xc),mean_point_depth)
+				rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
 				pose = Pose()
-				#print(camera_info)
-				pose.position.x = (int(xc) - camera.cx()) * mean_point_depth * constant_x
-				pose.position.y = (int(yc) - camera.cy()) * mean_point_depth * constant_y
-				pose.position.z = mean_point_depth * depth_scaling
+				pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
+				pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
+				pose.position.z = mean_point_depth * self.depth_scaling
 				pose.orientation.w = 1
-				#print(yc,xc,"to(increase)",depth[int(yc)+1][int(xc)+1])
-				#print(depth[np.round(tensor.item(xc))], [np.round(tensor.item(yc))])
 				msg.poses.append(pose)
+
 		self.pub.publish(msg)
-
-	
-		
-#################################################################	
-
 
 if __name__ == '__main__':
 
 	# Start ROS node
 	rospy.init_node('yolox_people_tracker')
-	camera = cameramodels.PinholeCameraModel()
+	
 	try:
-		pass
 		_checkpoint = os.path.expanduser(rospy.get_param("~checkpoint"))
 		_exp_path = os.path.expanduser(rospy.get_param("~exp"))
 		_config = rospy.get_param("~")
 		_camera_info = rospy.get_param("~camera_info")
 		_img = rospy.get_param("~img")
 		_depth = rospy.get_param("~depth")
+		_cid = rospy.get_param("~classid")
+		_depth_scaling = rospy.get_param("~depth_scaling")
 	except KeyError as e:
-		rospy.logerr(logger_name="YOLOXNode", msg="Parameter %s not found" % e)
+		rospy.logerr(logger_name="YoloxPeopleNode", msg="Parameter %s not found" % e)
 		sys.exit(1)
 
-	node = YOLOXNode(_checkpoint, _exp_path, _config, _camera_info, _img, _depth)
+	node = YoloxPeopleNode(_checkpoint, _exp_path, _config, _camera_info, _img, _depth, _cid, _depth_scaling)
 
-	rospy.loginfo(logger_name="YOLOXNode", msg="\nyolox running")
+	rospy.loginfo(logger_name="YoloxPeopleNode", msg="\nyolox person detection running")
 
 	rospy.spin()
