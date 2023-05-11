@@ -1,8 +1,8 @@
 bayes_people_tracker:
     filter_type: "UKF"                                         # The Kalman filter type: EKF = Extended Kalman Filter, UKF = Uncented Kalman Filter
     cv_noise_params:                                           # The noise for the constant velocity prediction model
-        x: 1.4
-        y: 1.4
+        x: 1.2
+        y: 1.2
     detectors:                                                 # Add detectors under this namespace
         leg_detector:                                          # Name of detector (used internally to identify them). Has to be unique.
             topic: "/to_pose_array/leg_detector"               # The topic on which the geometry_msgs/PoseArray is published
