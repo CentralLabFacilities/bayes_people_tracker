@@ -22,7 +22,7 @@ import message_filters
 from sensor_msgs.msg import Image, CameraInfo, PointCloud
 ########
 import std_msgs.msg
-from geometry_msgs.msg import PoseArray, Pose
+from geometry_msgs.msg import PoseArray, Pose, PoseWithCovariance,PoseWithCovarianceStamped
 from image_geometry import cameramodels
 
 class YoloxPeopleNode():
@@ -55,6 +55,12 @@ class YoloxPeopleNode():
 		try:
 			img = self._bridge.imgmsg_to_cv2(image, "bgr8")
 			depth = self._bridge.imgmsg_to_cv2(depth_raw, "passthrough")
+			if(depth.dtype==np.float32):
+				self.depth_scaling=1
+			elif(depth.dtype==np.uint16):
+				self.depth_scaling=0.001
+			else:
+				self.depth_scaling=1
 		except CvBridgeError as e:
 			error_msg = "Could not convert to opencv image: %s" % e
 			rospy.logerr(logger_name="YoloxPeopleNode", msg=error_msg)
@@ -67,22 +73,26 @@ class YoloxPeopleNode():
 		
 		msg = PoseArray()
 		msg.header = image.header
+		msg2.header = image.header
 		for c, score, box in zip(cls, scores, bboxes):
-			if(c == self.classid):
+			if(c == self.classid and score >0.5):
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
 				mean_point_depth= (depth[int(yc)][int(xc)])
-				if (np.isnan(mean_point_depth)):
-					mean_point_depth= 0
+				#if (np.isnan(mean_point_depth)):
+				#	mean_point_depth= 0
 				rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
 				pose = Pose()
 				pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
 				pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
 				pose.position.z = mean_point_depth * self.depth_scaling
+				#pose.orientation.x = 0
+				#pose.orientation.y = -1
+				#pose.orientation.z = 0
 				pose.orientation.w = 1
 				msg.poses.append(pose)
-
 		self.pub.publish(msg)
+		self.pubWithUncertainity.publish(msg2)
 
 if __name__ == '__main__':
 
