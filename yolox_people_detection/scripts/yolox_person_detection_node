@@ -22,7 +22,7 @@ import message_filters
 from sensor_msgs.msg import Image, CameraInfo, PointCloud
 ########
 import std_msgs.msg
-from geometry_msgs.msg import PoseArray, Pose, PoseWithCovariance,PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseArray, Pose
 from image_geometry import cameramodels
 
 class YoloxPeopleNode():
@@ -73,7 +73,6 @@ class YoloxPeopleNode():
 		
 		msg = PoseArray()
 		msg.header = image.header
-		msg2.header = image.header
 		for c, score, box in zip(cls, scores, bboxes):
 			if(c == self.classid and score >0.5):
 				yc= ((box[1] + box[3])/2).item()
@@ -86,13 +85,9 @@ class YoloxPeopleNode():
 				pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
 				pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
 				pose.position.z = mean_point_depth * self.depth_scaling
-				#pose.orientation.x = 0
-				#pose.orientation.y = -1
-				#pose.orientation.z = 0
 				pose.orientation.w = 1
 				msg.poses.append(pose)
 		self.pub.publish(msg)
-		self.pubWithUncertainity.publish(msg2)
 
 if __name__ == '__main__':
 
