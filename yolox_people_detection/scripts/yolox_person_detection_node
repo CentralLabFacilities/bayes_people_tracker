@@ -78,15 +78,15 @@ class YoloxPeopleNode():
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
 				mean_point_depth= (depth[int(yc)][int(xc)])
-				#if (np.isnan(mean_point_depth)):
+				if not (np.isnan(mean_point_depth)):
 				#	mean_point_depth= 0
-				rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
-				pose = Pose()
-				pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
-				pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
-				pose.position.z = mean_point_depth * self.depth_scaling
-				pose.orientation.w = 1
-				msg.poses.append(pose)
+					rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
+					pose = Pose()
+					pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
+					pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
+					pose.position.z = mean_point_depth * self.depth_scaling
+					pose.orientation.w = 1
+					msg.poses.append(pose)
 		self.pub.publish(msg)
 
 if __name__ == '__main__':
