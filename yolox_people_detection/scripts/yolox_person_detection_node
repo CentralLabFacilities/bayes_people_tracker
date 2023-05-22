@@ -86,7 +86,9 @@ class YoloxPeopleNode():
 					pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
 					pose.position.z = mean_point_depth * self.depth_scaling
 					pose.orientation.w = 1
-					msg.poses.append(pose)
+					if not (pose.position.z == 0){
+						msg.poses.append(pose)
+					}
 		self.pub.publish(msg)
 
 if __name__ == '__main__':
