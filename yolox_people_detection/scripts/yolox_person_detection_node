@@ -80,7 +80,11 @@ class YoloxPeopleNode():
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
 				mean_point_depth= (depth[int(yc)][int(xc)])
+<<<<<<< HEAD
 				scale=10# scale distance for the pointcross
+=======
+				scale=4# scale distance for the pointcross
+>>>>>>> 3046d84d577661585134083c865e5fd62e8f5058
 				mean_circle_depth_list= [mean_point_depth,(depth[int(yc+h/scale)][int(xc)]),(depth[int(yc)][int(xc+w/scale)]), (depth[int(yc-h/scale)][int(xc)]),(depth[int(yc)][int(xc-w/scale)])]
 				mean_circle_depth_clean_list = np.array([x for x in mean_circle_depth_list if np.isnan(x) == False])
 				mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
@@ -104,6 +108,7 @@ class YoloxPeopleNode():
 							#mean_circle_depth_clean_list[argmin]=mean_circle_depth_clean_list[argmax]
 							mean_circle_depth_clean_list[argmin]=mean_circle_depth
 							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+<<<<<<< HEAD
 							mean_circle_depth_clean_list[argmin]=mean_circle_depth
 							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
 							print("remove argmin, new is:",mean_circle_depth_clean_list)
@@ -112,6 +117,13 @@ class YoloxPeopleNode():
 							mean_circle_depth_clean_list[argmax]=mean_circle_depth
 							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
 							print("both are deleted")	
+=======
+							mean_circle_depth_clean_list[argmax]=mean_circle_depth
+							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+							print("remove argmin, new is:",mean_circle_depth_clean_list)
+						else:
+							print("nothing is deleted")	
+>>>>>>> 3046d84d577661585134083c865e5fd62e8f5058
 				if not (np.isnan(mean_circle_depth)):
 				#	mean_point_depth= 0
 					rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
