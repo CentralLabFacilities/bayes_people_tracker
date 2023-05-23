@@ -75,20 +75,50 @@ class YoloxPeopleNode():
 		msg.header = image.header
 		for c, score, box in zip(cls, scores, bboxes):
 			if(c == self.classid and score >0.5):
+				h = (box[3] - box[1])
+				w= (box[2] - box[0])
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
 				mean_point_depth= (depth[int(yc)][int(xc)])
-				if not (np.isnan(mean_point_depth)):
+				scale=4# scale distance for the pointcross
+				mean_circle_depth_list= [mean_point_depth,(depth[int(yc+h/scale)][int(xc)]),(depth[int(yc)][int(xc+w/scale)]), (depth[int(yc-h/scale)][int(xc)]),(depth[int(yc)][int(xc-w/scale)])]
+				mean_circle_depth_clean_list = np.array([x for x in mean_circle_depth_list if np.isnan(x) == False])
+				mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+				print(mean_circle_depth_clean_list)
+				#remove the outlier if there is one
+				while(abs(np.min(mean_circle_depth_clean_list)-mean_circle_depth)>1 or abs(np.max(mean_circle_depth_clean_list)-mean_circle_depth)>1):
+					argmin=np.argmin(mean_circle_depth_clean_list)
+					argmax=np.argmax(mean_circle_depth_clean_list)
+					if not (int(mean_circle_depth_clean_list[argmin])==int(mean_circle_depth_clean_list[argmax]) 
+					or (int(mean_circle_depth_clean_list[argmin])+1)==(int(mean_circle_depth_clean_list[argmax]))):#check if there are near to each other
+						depthmin=abs(mean_circle_depth-mean_circle_depth_clean_list[argmin])
+						depthmax= abs(mean_circle_depth-mean_circle_depth_clean_list[argmax])
+						if(depthmin<depthmax):
+							#mean_circle_depth_clean_list[argmax]=mean_circle_depth_clean_list[argmin]
+							mean_circle_depth_clean_list[argmax]=mean_circle_depth
+							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+							mean_circle_depth_clean_list[argmax]=mean_circle_depth
+							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+							print("remove argmax, new is:",mean_circle_depth_clean_list)
+						elif(depthmin>depthmax):
+							#mean_circle_depth_clean_list[argmin]=mean_circle_depth_clean_list[argmax]
+							mean_circle_depth_clean_list[argmin]=mean_circle_depth
+							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+							mean_circle_depth_clean_list[argmax]=mean_circle_depth
+							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
+							print("remove argmin, new is:",mean_circle_depth_clean_list)
+						else:
+							print("nothing is deleted")	
+				if not (np.isnan(mean_circle_depth)):
 				#	mean_point_depth= 0
 					rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
 					pose = Pose()
 					pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
 					pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
-					pose.position.z = mean_point_depth * self.depth_scaling
+					pose.position.z = mean_circle_depth * self.depth_scaling
 					pose.orientation.w = 1
-					if not (pose.position.z == 0){
+					if not (pose.position.z == 0):
 						msg.poses.append(pose)
-					}
 		self.pub.publish(msg)
 
 if __name__ == '__main__':
