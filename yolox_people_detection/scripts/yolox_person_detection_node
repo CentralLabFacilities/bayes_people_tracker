@@ -101,8 +101,8 @@ class YoloxPeopleNode():
 					dis= math.sqrt((x**2)+(y**2)+(z**2))
 					mean_circle_depth_list.append([x,y,z,dis])
 					mean_circle_depth=dis
-				count=4#how many points should be generated
-				for i in range(count):
+				#count=4#how many points should be generated
+				for i in range(4):
 					if i%2 == 0: #even height
 						xd=xc
 						yd=(yc+(np.random.randint(1, h_area)))*height_direction
