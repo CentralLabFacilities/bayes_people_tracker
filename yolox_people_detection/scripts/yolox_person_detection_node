@@ -6,6 +6,9 @@ import sys
 # ROS
 import rospy
 import numpy as np
+import math
+#import time
+import statistics
 from torch import tensor
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -26,7 +29,7 @@ from geometry_msgs.msg import PoseArray, Pose
 from image_geometry import cameramodels
 
 class YoloxPeopleNode():
-	def __init__(self, checkpoint, exp_path, config, camera_info_path='/xtion/depth_registered/camera_info' , image_path= '/xtion/rgb/image_raw', depth_path='/xtion/depth_registered/image_raw', classid = 0, depth_scaling = 1):
+	def __init__(self, checkpoint, exp_path, config, camera_info_path='/xtion/depth_registered/camera_info' , image_path= '/xtion/rgb/image_raw', depth_path='/xtion/depth_registered/image_raw', classid = 0, depth_scaling = 1,variance_scaling=10):
 		rospy.loginfo(logger_name="YoloxPeopleNode", msg="initializing:")
 		rospy.loginfo(logger_name="YoloxPeopleNode", msg=f" - checkpoint={checkpoint}")
 		rospy.loginfo(logger_name="YoloxPeopleNode", msg=f" - exp_path={exp_path}")
@@ -50,7 +53,7 @@ class YoloxPeopleNode():
 		self.camera = cameramodels.PinholeCameraModel()
 
 	def callback(self, image, camera_info, depth_raw):
-
+		variance_scaling=10#muss noch in den methodenkopf
 		#print("got images")
 		try:
 			img = self._bridge.imgmsg_to_cv2(image, "bgr8")
@@ -74,54 +77,92 @@ class YoloxPeopleNode():
 		msg = PoseArray()
 		msg.header = image.header
 		for c, score, box in zip(cls, scores, bboxes):
+			#zeitanfang = time.time()
 			if(c == self.classid and score >0.5):
 				h = (box[3] - box[1])
 				w= (box[2] - box[0])
 				yc= ((box[1] + box[3])/2).item()
 				xc = ((box[0] + box[2])/2).item()
-				mean_point_depth= (depth[int(yc)][int(xc)])
-				scale=10# scale distance for the pointcross
-				mean_circle_depth_list= [mean_point_depth,(depth[int(yc+h/scale)][int(xc)]),(depth[int(yc)][int(xc+w/scale)]), (depth[int(yc-h/scale)][int(xc)]),(depth[int(yc)][int(xc-w/scale)])]
-				mean_circle_depth_clean_list = np.array([x for x in mean_circle_depth_list if np.isnan(x) == False])
-				mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-				print(mean_circle_depth_clean_list)
+				#mean_point_depth= (depth[int(yc)][int(xc)])
+				# direction for the pointcross 
+				height_direction=1
+				wide_direction=1
+				h_area=h//variance_scaling
+				w_area=w//variance_scaling
+				if h_area<2:
+					h_area=2
+				if w_area<2:
+					w_area=2
+				mean_circle_depth_list=[]
+				z = (depth[int(yc)][int(xc)]) * self.depth_scaling
+				if not ((z==0) or ( np.isnan(z))):
+					x = (xc - self.camera.cx()) * (depth[int(yc)][int(xc)]) * constant_x
+					y = (yc - self.camera.cy()) * (depth[int(yc)][int(xc)]) * constant_y
+					dis= math.sqrt((x**2)+(y**2)+(z**2))
+					mean_circle_depth_list.append([x,y,z,dis])
+					mean_circle_depth=dis
+				#count=4#how many points should be generated
+				for i in range(4):
+					if i%2 == 0: #even height
+						xd=xc
+						yd=(yc+(np.random.randint(1, h_area)))*height_direction
+						height_direction = height_direction*-1
+					else: #odd wide
+						xd=(xc+(np.random.randint(1, w_area)))*wide_direction
+						yd=yc
+						wide_direction = wide_direction *-1
+					z = (depth[int(yd)][int(xd)]) * self.depth_scaling
+					if not ((z==0) or (np.isnan(z))):
+						x = (xd - self.camera.cx()) * (depth[int(yd)][int(xd)]) * constant_x
+						y = (yd - self.camera.cy()) * (depth[int(yd)][int(xd)]) * constant_y
+						dis= math.sqrt((x**2)+(y**2)+(z**2))
+						mean_circle_depth_list.append([x,y,z, dis])
+					#if (np.isnan(z)):
+					#	print("dead end")
+				#mean_circle_depth=np.median(mean_circle_depth_list.T[3])
+				#mean_circle_depth=np.mean(mean_circle_depth_list.T[3])		
 				#remove the outlier if there is one
-				while(abs(np.min(mean_circle_depth_clean_list)-mean_circle_depth)>1 or abs(np.max(mean_circle_depth_clean_list)-mean_circle_depth)>1):
-					argmin=np.argmin(mean_circle_depth_clean_list)
-					argmax=np.argmax(mean_circle_depth_clean_list)
-					if not (int(mean_circle_depth_clean_list[argmin])==int(mean_circle_depth_clean_list[argmax]) 
-					or (int(mean_circle_depth_clean_list[argmin])+1)==(int(mean_circle_depth_clean_list[argmax]))):#check if there are near to each other
-						depthmin=abs(mean_circle_depth-mean_circle_depth_clean_list[argmin])
-						depthmax= abs(mean_circle_depth-mean_circle_depth_clean_list[argmax])
-						if(depthmin<depthmax):
-							#mean_circle_depth_clean_list[argmax]=mean_circle_depth_clean_list[argmin]
-							mean_circle_depth_clean_list[argmax]=mean_circle_depth
-							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-							mean_circle_depth_clean_list[argmax]=mean_circle_depth
-							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-							print("remove argmax, new is:",mean_circle_depth_clean_list)
-						elif(depthmin>depthmax):
-							#mean_circle_depth_clean_list[argmin]=mean_circle_depth_clean_list[argmax]
-							mean_circle_depth_clean_list[argmin]=mean_circle_depth
-							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-							mean_circle_depth_clean_list[argmin]=mean_circle_depth
-							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-							print("remove argmin, new is:",mean_circle_depth_clean_list)
-						else:
-							mean_circle_depth_clean_list[argmin]=mean_circle_depth							
-							mean_circle_depth_clean_list[argmax]=mean_circle_depth
-							mean_circle_depth=np.mean(mean_circle_depth_clean_list.T)
-							print("both are deleted")	
-				if not (np.isnan(mean_circle_depth)):
-				#	mean_point_depth= 0
-					rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {yc}, {xc}, {mean_point_depth}")
-					pose = Pose()
-					pose.position.x = (int(xc) - self.camera.cx()) * mean_point_depth * constant_x
-					pose.position.y = (int(yc) - self.camera.cy()) * mean_point_depth * constant_y
-					pose.position.z = mean_circle_depth * self.depth_scaling
-					pose.orientation.w = 1
-					if not (pose.position.z == 0):
-						msg.poses.append(pose)
+				#while(abs(np.min(mean_circle_depth_list.T[3])-mean_circle_depth)>1 or abs(np.max(mean_circle_depth_list.T[3])-mean_circle_depth)>1):
+				#for i in range(int((abs(np.min(mean_circle_depth_list.T[3])-mean_circle_depth)-1+abs(np.max(mean_circle_depth_list.T[3])-mean_circle_depth)-1)/2)):
+				#	argmin=np.argmin(mean_circle_depth_list.T[3])
+				#	argmax=np.argmax(mean_circle_depth_list.T[3])
+				#	if not (int(mean_circle_depth_list[argmin,3])==int(mean_circle_depth_list[argmax,3])): #check if there are near to each other
+				#		depthmin=math.fabs(mean_circle_depth_list[argmin,3])
+				#		depthmax= math.fabs(mean_circle_depth_list[argmax,3])
+				#		if(depthmin<depthmax):
+				#			mean_circle_depth_list=np.delete(mean_circle_depth_list, argmax, 0)
+				#		elif(depthmin>depthmax):
+				#			mean_circle_depth_list=np.delete(mean_circle_depth_list, argmin, 0)
+				#		else:
+				#			if dislist.size>2:
+				#				mean_circle_depth_list=np.delete(mean_circle_depth_list, argmin, 0)							
+				#				mean_circle_depth_list=np.delete(mean_circle_depth_list, argmax, 0)
+				#			else:
+				#				break
+				#		mean_circle_depth=np.mean(mean_circle_depth_list.T[3])
+						
+				#	else:
+				#		print("problem", (mean_circle_depth_list[argmin]), (mean_circle_depth_list[argmax]))
+				#		break
+				mean_circle_depth_list=np.array(mean_circle_depth_list)
+				try:
+					if (((mean_circle_depth_list.size))>=4):
+						#mean_circle_depth=statistics.median(mean_circle_depth_list.T[3])
+						idx = (np.abs(mean_circle_depth_list.T[3] - statistics.median(mean_circle_depth_list.T[3]))).argmin()
+						#print(idx, mean_circle_depth,"final vector",mean_circle_depth_list[idx])
+						rospy.logdebug(logger_name="YoloxPeopleNode", msg=f"human: {mean_circle_depth_list[idx][1]}, {mean_circle_depth_list[idx][0]}, {mean_circle_depth_list[idx][2]}")
+						pose = Pose()
+						pose.position.x = mean_circle_depth_list[idx][0]
+						pose.position.y = mean_circle_depth_list[idx][1]
+						pose.position.z = mean_circle_depth_list[idx][2]
+						pose.orientation.w = 1
+						if not (pose.position.z == 0):
+							msg.poses.append(pose)
+				except:
+					print("Warning:", mean_circle_depth_list)
+				#zeitende = time.time()
+				#print("Dauer Programmausführung:",)
+				#print(zeitende-zeitanfang)
 		self.pub.publish(msg)
 
 if __name__ == '__main__':
@@ -138,11 +179,12 @@ if __name__ == '__main__':
 		_depth = rospy.get_param("~depth")
 		_cid = rospy.get_param("~classid")
 		_depth_scaling = rospy.get_param("~depth_scaling")
+		#_variance_scaling = 10#rospy.get_param("~variance_scaling")
 	except KeyError as e:
 		rospy.logerr(logger_name="YoloxPeopleNode", msg="Parameter %s not found" % e)
 		sys.exit(1)
 
-	node = YoloxPeopleNode(_checkpoint, _exp_path, _config, _camera_info, _img, _depth, _cid, _depth_scaling)
+	node = YoloxPeopleNode(_checkpoint, _exp_path, _config, _camera_info, _img, _depth, _cid, _depth_scaling, 10)
 
 	rospy.loginfo(logger_name="YoloxPeopleNode", msg="\nyolox person detection running")
 
