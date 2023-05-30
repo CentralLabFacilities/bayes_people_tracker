@@ -1,13 +1,11 @@
 #include "bayes_people_tracker/people_tracker.h"
-#include <tf/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <XmlRpc.h>
 
 
-PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0)
+PeopleTracker::PeopleTracker() : detect_seq(0), marker_seq(0), m_tf_buffer(ros::Duration(30.0)), m_tf(m_tf_buffer)
 {
     ros::NodeHandle n;
-
-    listener = new tf::TransformListener();
 
     startup_time = ros::Time::now().toSec();
     startup_time_str = num_to_str<double>(startup_time);
@@ -203,6 +201,19 @@ void PeopleTracker::trackingThread() {
 
     while(ros::ok()) {
         std::map<long, std::string> tags;
+        geometry_msgs::TransformStamped tf;
+        if (target_frame != base_frame) {
+            try {
+                ROS_DEBUG_STREAM_NAMED("BayesPeopleTracker", "transforming poses from " << target_frame << " to " << base_frame);
+                tf = m_tf_buffer.lookupTransform(base_frame, target_frame, ros::Time(0));
+            } catch (tf2::TransformException& ex) {
+                ROS_ERROR_STREAM_NAMED("BayesPeopleTracker", ex.what());
+            }
+        } else {
+            tf.header.frame_id = target_frame;
+            tf.transform.rotation.w = 1;
+        }
+
         try {
             std::map<long, std::vector<geometry_msgs::Pose> > ppl;
             if (ekf != NULL) { 
@@ -242,19 +253,7 @@ void PeopleTracker::trackingThread() {
                     poseInTargetCoords.header.stamp.fromSec(time_sec);
                     poseInTargetCoords.pose = it->second[0];
 
-                    //Find closest person and get distance and angle
-                    if(strcmp(target_frame.c_str(), base_frame.c_str())) {
-                        try{
-                            ROS_DEBUG("Transforming received position into %s coordinate system.", base_frame.c_str());
-                            listener->waitForTransform(poseInTargetCoords.header.frame_id, base_frame, poseInTargetCoords.header.stamp, ros::Duration(3.0));
-                            listener->transformPose(base_frame, ros::Time(0), poseInTargetCoords, poseInTargetCoords.header.frame_id, poseInRobotCoords);
-                        } catch(tf::TransformException ex) {
-                            ROS_WARN("Failed transform: %s", ex.what());
-                            continue;
-                        }
-                    } else {
-                        poseInRobotCoords = poseInTargetCoords;
-                    }
+                    tf2::doTransform(poseInTargetCoords,poseInRobotCoords, tf);
 
             	    if(pub_detect.getNumSubscribers() || pub_pose.getNumSubscribers() || pub_pose_array.getNumSubscribers() || pub_people.getNumSubscribers()) {
                         std::vector<double> polar = cartesianToPolar(poseInRobotCoords.pose.position);
@@ -515,6 +514,21 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
         return;
     }
 
+
+    geometry_msgs::TransformStamped tf;
+    if (target_frame != pta->header.frame_id) {
+        try {
+            ROS_DEBUG_STREAM_NAMED("BayesPeopleTracker", "transforming input from " << pta->header.frame_id << " to " << target_frame);
+            tf = m_tf_buffer.lookupTransform(target_frame, pta->header.frame_id, pta->header.stamp);
+        } catch (tf2::TransformException& ex) {
+            ROS_ERROR_STREAM_NAMED("BayesPeopleTracker", ex.what());
+            return;
+        }
+    } else {
+        tf.header = pta->header;
+        tf.transform.rotation.w = 1;
+    }
+
     std::vector<geometry_msgs::Point> ppl;
     for(int i = 0; i < pta->poses.size(); i++) {
         geometry_msgs::Pose pt = pta->poses[i];
@@ -525,21 +539,7 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
             poseInCamCoords.header = pta->header;
             poseInCamCoords.pose = pt;
 
-            if (target_frame == poseInCamCoords.header.frame_id) {
-                poseInTargetCoords = poseInCamCoords;
-            } else {
-            //Transform
-                try {
-                    // Transform into given traget frame. Default /map
-                    ROS_DEBUG("Transforming received position into %s coordinate system.", target_frame.c_str());
-                    listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
-                    listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
-                }
-                catch(tf::TransformException ex) {
-                    ROS_WARN("Failed transform: %s", ex.what());
-                    return;
-                }
-            }
+            tf2::doTransform(poseInCamCoords,poseInTargetCoords, tf);
 
             poseInTargetCoords.pose.position.z = 0.0;
             ppl.push_back(poseInTargetCoords.pose.position);
@@ -571,6 +571,20 @@ void PeopleTracker::detectorCallback_people(const people_msgs::People::ConstPtr 
         return;
     }
 
+    geometry_msgs::TransformStamped tf;
+    if (target_frame != people->header.frame_id) {
+        try {
+            ROS_DEBUG_STREAM_NAMED("BayesPeopleTracker", "transforming input from " << people->header.frame_id << " to " << target_frame);
+            tf = m_tf_buffer.lookupTransform(target_frame, people->header.frame_id, people->header.stamp);
+        } catch (tf2::TransformException& ex) {
+            ROS_ERROR_STREAM_NAMED("BayesPeopleTracker", ex.what());
+            return;
+        }
+    } else {
+        tf.header = people->header;
+        tf.transform.rotation.w = 1;
+    }
+
     std::vector<geometry_msgs::Point> ppl;
     std::vector<std::string> tags;
     for(int i = 0; i < people->people.size(); i++) {
@@ -582,25 +596,10 @@ void PeopleTracker::detectorCallback_people(const people_msgs::People::ConstPtr 
         poseInCamCoords.header = people->header;
 
         poseInCamCoords.pose.position = pt.position;
-        tf::Quaternion temp_quat;
-        temp_quat.setRPY( 0, 0, 0 ); // detections don't have an orientation
-        tf::quaternionTFToMsg(temp_quat, poseInCamCoords.pose.orientation);
+        // detections don't have an orientation
+        poseInCamCoords.pose.orientation.w = 1;
 
-        if (target_frame == poseInCamCoords.header.frame_id) {
-            poseInTargetCoords = poseInCamCoords;
-        } else {
-        //Transform
-            try {
-                // Transform into given traget frame. Default /map
-                ROS_DEBUG("Transforming received position into %s coordinate system.", target_frame.c_str());
-                listener->waitForTransform(poseInCamCoords.header.frame_id, target_frame, poseInCamCoords.header.stamp, ros::Duration(3.0));
-                listener->transformPose(target_frame, ros::Time(0), poseInCamCoords, poseInCamCoords.header.frame_id, poseInTargetCoords);
-            }
-            catch(tf::TransformException ex) {
-                ROS_WARN("Failed transform: %s", ex.what());
-                return;
-            }
-        }
+        tf2::doTransform(poseInCamCoords,poseInTargetCoords, tf);
 
         poseInTargetCoords.pose.position.z = 0.0;
         ppl.push_back(poseInTargetCoords.pose.position);

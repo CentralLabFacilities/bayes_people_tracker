@@ -3,8 +3,7 @@
 
 #include <ros/ros.h>
 #include <ros/time.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_datatypes.h>
+#include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
@@ -89,7 +88,8 @@ private:
     ros::Publisher pub_people;
     ros::Publisher pub_trajectory;
     ros::Publisher pub_marker;
-    tf::TransformListener* listener;
+    tf2_ros::Buffer m_tf_buffer;
+    tf2_ros::TransformListener m_tf;
     std::string target_frame;
     std::string base_frame;
 
