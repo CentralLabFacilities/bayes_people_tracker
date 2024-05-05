@@ -6,6 +6,7 @@ import rostopic
 import geometry_msgs.msg
 import genpy
 from bson import Binary
+from people_msgs.msg import People, Person
 
 
 class ToPoseArray():
@@ -16,6 +17,7 @@ class ToPoseArray():
         for elem in detectors:
             topic = detectors[elem]["topic"]
             point = detectors[elem]["point_name"]
+            people_topic = detectors[elem]["topic"]
             rospy.loginfo(
                 "Found detector '%s' with topic '%s'. "
                 "Waiting for topic type...",
@@ -25,6 +27,7 @@ class ToPoseArray():
             type = rostopic.get_topic_type(topic, True)[0]
             rospy.loginfo("Got topic type: %s.", type)
             pub = rospy.Publisher("~"+elem, geometry_msgs.msg.PoseArray, queue_size=0)
+            pub_people = rospy.Publisher("~people_"+elem, People, queue_size=0)
             subscribers.append(
                 rospy.Subscriber(
                     topic,
@@ -33,7 +36,8 @@ class ToPoseArray():
                     callback_args={
                         "detector": elem,
                         "point_name": point,
-                        "publisher": pub
+                        "publisher": pub,
+                        "people_publisher": pub_people
                     }
                 )
             )
@@ -41,15 +45,18 @@ class ToPoseArray():
     def callback(self, msg, args):
         pose_array = geometry_msgs.msg.PoseArray()
         msg = self.msg_to_document(msg)
+        msg_people = People()
         headers = []
         # Finding a header that contains a frame_id
         self.find_key(msg, "header", headers)
+        
         for elem in headers:
             if not elem["frame_id"] == '':
                 pose_array.header.seq = elem["seq"]
                 pose_array.header.frame_id = elem["frame_id"]
                 pose_array.header.stamp.secs = elem["stamp"]["secs"]
                 pose_array.header.stamp.nsecs = elem["stamp"]["nsecs"]
+                msg_people.header = pose_array.header
         positions = []
         # Find x and y values for the given position key
         self.find_key(msg, args["point_name"], positions)
@@ -60,7 +67,15 @@ class ToPoseArray():
             pose.position.z = 0.0     # Project to ground plane
             pose.orientation.w = 1.0  # Currently no orientation
             pose_array.poses.append(pose)
+            person = Person()
+            person.reliability = 1 # TODO add reliability
+            person.position.x = elem['x']
+            person.position.y = elem['y']
+            person.position.z = 0.0     # Project to ground plane
+            person.orientation.w = 1.0  # Currently no orientation
+            msg_people.poses.append(person)
         args["publisher"].publish(pose_array)
+        args["people_publisher"].publish(msg_people)
 
     def find_key(self, dictionary, key, result_list):
         for elem in dictionary:
