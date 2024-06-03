@@ -18,3 +18,10 @@ bayes_people_tracker:
                 y: 0.2
             observation_model: "CARTESIAN"
             matching_algorithm: "NNJPDA"                     # The algorthim to match different detections. NN = Nearest Neighbour, NNJPDA = NN Joint Probability Data Association
+        tracking_actuator:
+            topic: "/tracking_act/people"
+            cartesian_noise_params:
+                x: 0.2
+                y: 0.2
+            observation_model: "CARTESIAN"
+            matching_alogrithm: "NNJPDA"
