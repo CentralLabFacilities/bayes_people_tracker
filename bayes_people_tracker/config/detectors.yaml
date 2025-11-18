@@ -33,3 +33,10 @@ bayes_people_tracker:
                 y: 0.2
             observation_model: "CARTESIAN"
             matching_alogrithm: "NNJPDA"
+        mujoco_tracker:
+            topic: "/mujoco_persons/poses"
+            cartesian_noise_params:
+                x: 0.1
+                y: 0.1
+            observation_model: "CARTESIAN"
+            matching_alogrithm: "NNJPDA"
