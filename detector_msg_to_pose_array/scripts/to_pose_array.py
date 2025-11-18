@@ -5,7 +5,6 @@ import roslib
 import rostopic
 import geometry_msgs.msg
 import genpy
-from bson import Binary
 
 
 class ToPoseArray():
@@ -119,7 +118,7 @@ class ToPoseArray():
         """
 
         if isinstance(v, str) and type == 'uint8[]':
-            v = Binary(v)
+            v = bytes(v)
 
         if isinstance(v, rospy.Message):
             return self.msg_to_document(v)

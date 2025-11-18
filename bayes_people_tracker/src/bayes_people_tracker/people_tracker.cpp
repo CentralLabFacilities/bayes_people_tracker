@@ -519,7 +519,7 @@ void PeopleTracker::detectorCallback(const geometry_msgs::PoseArray::ConstPtr &p
     if (target_frame != pta->header.frame_id) {
         try {
             ROS_DEBUG_STREAM_NAMED("BayesPeopleTracker", "transforming input from " << pta->header.frame_id << " to " << target_frame);
-            tf = m_tf_buffer.lookupTransform(target_frame, pta->header.frame_id, pta->header.stamp);
+            tf = m_tf_buffer.lookupTransform(target_frame, pta->header.frame_id, pta->header.stamp, ros::Duration(0.01));
         } catch (tf2::TransformException& ex) {
             ROS_ERROR_STREAM_NAMED("BayesPeopleTracker", ex.what());
             return;
@@ -575,7 +575,7 @@ void PeopleTracker::detectorCallback_people(const people_msgs::People::ConstPtr 
     if (target_frame != people->header.frame_id) {
         try {
             ROS_DEBUG_STREAM_NAMED("BayesPeopleTracker", "transforming input from " << people->header.frame_id << " to " << target_frame);
-            tf = m_tf_buffer.lookupTransform(target_frame, people->header.frame_id, people->header.stamp);
+            tf = m_tf_buffer.lookupTransform(target_frame, people->header.frame_id, people->header.stamp, ros::Duration(0.01));
         } catch (tf2::TransformException& ex) {
             ROS_ERROR_STREAM_NAMED("BayesPeopleTracker", ex.what());
             return;
